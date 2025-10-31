@@ -64,14 +64,6 @@ const IdentificationSection: React.FC<IdentificationSectionProps> = ({ data, onC
     onChange('doc_unico', maskedValue);
   };
 
-  const motionProps = {
-    initial: { opacity: 0, x: -10 },
-    animate: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: 10 },
-    transition: { duration: 0.2 },
-    className: "absolute w-full"
-  };
-
   return (
     <Section title="Dados Gerais" description="Informações de identificação do cliente ou fornecedor.">
       {/* --- ROW 1 --- */}
@@ -117,25 +109,19 @@ const IdentificationSection: React.FC<IdentificationSectionProps> = ({ data, onC
         />
       </motion.div>
       
-      <div className="sm:col-span-3 relative h-[74px]">
-        <AnimatePresence mode="wait">
-          {tipoPessoa === 'juridica' && (
-            <motion.div key="fantasia" {...motionProps}>
+      <AnimatePresence>
+        {tipoPessoa === 'juridica' && (
+            <motion.div 
+                className="sm:col-span-3"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+            >
               <Input label="Fantasia" name="fantasia" value={data.fantasia || ''} onChange={e => onChange('fantasia', e.target.value)} />
             </motion.div>
-          )}
-          {tipoPessoa === 'fisica' && (
-            <motion.div key="rg" {...motionProps}>
-              <Input label="RG" name="rg" value={data.rg || ''} onChange={e => onChange('rg', e.target.value)} placeholder="Opcional" />
-            </motion.div>
-          )}
-          {tipoPessoa === 'estrangeiro' && (
-            <motion.div key="cnh" {...motionProps}>
-              <Input label="Carteira de Habilitação" name="carteira_habilitacao" value={data.carteira_habilitacao || ''} onChange={e => onChange('carteira_habilitacao', e.target.value)} placeholder="Opcional" />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+        )}
+       </AnimatePresence>
       
       {/* --- Other Fields --- */}
       <Select label="Tipo de contato" name="tipo" value={data.tipo || 'cliente'} onChange={(e) => onChange('tipo', e.target.value)} required className="sm:col-span-3">

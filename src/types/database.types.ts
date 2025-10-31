@@ -145,8 +145,8 @@ export interface Database {
           id: string
           created_at: string
           updated_at: string
-          razao_social: string
-          fantasia: string | null
+          nome_razao_social: string
+          nome_fantasia: string | null
           cnpj: string | null
           logotipo_url: string | null
           telefone: string | null
@@ -164,8 +164,8 @@ export interface Database {
           id?: string
           created_at?: string
           updated_at?: string
-          razao_social: string
-          fantasia?: string | null
+          nome_razao_social: string
+          nome_fantasia?: string | null
           cnpj?: string | null
           logotipo_url?: string | null
           telefone?: string | null
@@ -183,8 +183,8 @@ export interface Database {
           id?: string
           created_at?: string
           updated_at?: string
-          razao_social?: string
-          fantasia?: string | null
+          nome_razao_social?: string
+          nome_fantasia?: string | null
           cnpj?: string | null
           logotipo_url?: string | null
           telefone?: string | null
@@ -810,16 +810,11 @@ export interface Database {
           observacoes: string | null
           created_at: string
           updated_at: string
-          pessoa_search: string
+          pessoa_search: any
           tipo_pessoa: Database["public"]["Enums"]["tipo_pessoa_enum"]
           fantasia: string | null
           codigo_externo: string | null
           contribuinte_icms: Database["public"]["Enums"]["contribuinte_icms_enum"]
-          contato_tags: string[] | null
-          rg: string | null
-          celular: string | null
-          site: string | null
-          carteira_habilitacao: string | null
         }
         Insert: {
           id?: string
@@ -839,11 +834,6 @@ export interface Database {
           fantasia?: string | null
           codigo_externo?: string | null
           contribuinte_icms?: Database["public"]["Enums"]["contribuinte_icms_enum"]
-          contato_tags?: string[] | null
-          rg?: string | null
-          celular?: string | null
-          site?: string | null
-          carteira_habilitacao?: string | null
         }
         Update: {
           id?: string
@@ -863,99 +853,6 @@ export interface Database {
           fantasia?: string | null
           codigo_externo?: string | null
           contribuinte_icms?: Database["public"]["Enums"]["contribuinte_icms_enum"]
-          contato_tags?: string[] | null
-          rg?: string | null
-          celular?: string | null
-          site?: string | null
-          carteira_habilitacao?: string | null
-        }
-      }
-      pessoa_enderecos: {
-        Row: {
-          id: string
-          empresa_id: string
-          pessoa_id: string
-          tipo_endereco: string | null
-          logradouro: string | null
-          numero: string | null
-          complemento: string | null
-          bairro: string | null
-          cidade: string | null
-          uf: string | null
-          cep: string | null
-          pais: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          empresa_id: string
-          pessoa_id: string
-          tipo_endereco?: string | null
-          logradouro?: string | null
-          numero?: string | null
-          complemento?: string | null
-          bairro?: string | null
-          cidade?: string | null
-          uf?: string | null
-          cep?: string | null
-          pais?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          empresa_id?: string
-          pessoa_id?: string
-          tipo_endereco?: string | null
-          logradouro?: string | null
-          numero?: string | null
-          complemento?: string | null
-          bairro?: string | null
-          cidade?: string | null
-          uf?: string | null
-          cep?: string | null
-          pais?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      pessoa_contatos: {
-        Row: {
-          id: string
-          empresa_id: string
-          pessoa_id: string
-          nome: string | null
-          email: string | null
-          telefone: string | null
-          cargo: string | null
-          observacoes: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          empresa_id: string
-          pessoa_id: string
-          nome?: string | null
-          email?: string | null
-          telefone?: string | null
-          cargo?: string | null
-          observacoes?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          empresa_id?: string
-          pessoa_id?: string
-          nome?: string | null
-          email?: string | null
-          telefone?: string | null
-          cargo?: string | null
-          observacoes?: string | null
-          created_at?: string
-          updated_at?: string
         }
       }
       user_active_empresa: {

@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Save } from 'lucide-react';
-import { PartnerDetails, savePartnerFromForm, Endereco, Contato } from '../../services/partners';
+import { PartnerDetails, savePartner, PartnerPayload } from '../../services/partners';
 import { useToast } from '../../contexts/ToastProvider';
 import { Database } from '@/types/database.types';
 import IdentificationSection from './form-sections/IdentificationSection';
-import AddressSection from './form-sections/AddressSection';
 import ContactSection from './form-sections/ContactSection';
 
 type Pessoa = Database['public']['Tables']['pessoas']['Row'];
@@ -19,20 +18,13 @@ const PartnerFormPanel: React.FC<PartnerFormPanelProps> = ({ partner, onSaveSucc
   const { addToast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<Pessoa>>({});
-  const [addresses, setAddresses] = useState<Partial<Endereco>[]>([]);
-  const [contacts, setContacts] = useState<Partial<Contato>[]>([]);
 
   useEffect(() => {
     if (partner) {
-      const { enderecos, contatos, ...pessoaData } = partner;
-      setFormData(pessoaData);
-      setAddresses(enderecos?.length > 0 ? enderecos : [{ tipo_endereco: 'principal' }]);
-      setContacts(contatos || []);
+      setFormData(partner);
     } else {
       // Estado inicial para um novo parceiro
       setFormData({ tipo: 'cliente', tipo_pessoa: 'juridica', isento_ie: false, contribuinte_icms: '9' });
-      setAddresses([{ tipo_endereco: 'principal' }]);
-      setContacts([]);
     }
   }, [partner]);
 
@@ -48,23 +40,6 @@ const PartnerFormPanel: React.FC<PartnerFormPanelProps> = ({ partner, onSaveSucc
       email: data.email || prev.email,
       telefone: data.ddd_telefone_1 || prev.telefone,
     }));
-    setAddresses(prev => {
-        const newAddresses = [...prev];
-        const mainAddressIndex = newAddresses.findIndex(a => a.tipo_endereco === 'principal');
-        const indexToUpdate = mainAddressIndex !== -1 ? mainAddressIndex : 0;
-        if (!newAddresses[indexToUpdate]) newAddresses[indexToUpdate] = {};
-        newAddresses[indexToUpdate] = {
-            ...newAddresses[indexToUpdate],
-            cep: data.cep,
-            logradouro: data.logradouro,
-            numero: data.numero,
-            complemento: data.complemento,
-            bairro: data.bairro,
-            cidade: data.municipio,
-            uf: data.uf,
-        };
-        return newAddresses;
-    });
   };
 
   const handleSave = async () => {
@@ -75,17 +50,13 @@ const PartnerFormPanel: React.FC<PartnerFormPanelProps> = ({ partner, onSaveSucc
     
     setIsSaving(true);
     try {
-      const mainAddress = addresses.find(a => a.tipo_endereco === 'principal') || {};
-
-      const formValues = {
-        ...formData,
-        ...mainAddress,
-        contatos: contacts,
+      const payload: PartnerPayload = {
+        pessoa: formData,
       };
 
-      console.log('[FORM][PARTNER_SUBMIT]', formValues);
+      console.log('[FORM][PARTNER_SUBMIT]', payload);
 
-      const savedPartner = await savePartnerFromForm(formValues);
+      const savedPartner = await savePartner(payload);
       
       console.log('[RPC][CREATE_UPDATE_PARTNER][OK]', savedPartner);
       addToast('Salvo com sucesso!', 'success');
@@ -106,15 +77,9 @@ const PartnerFormPanel: React.FC<PartnerFormPanelProps> = ({ partner, onSaveSucc
           onChange={handlePessoaChange}
           onCnpjDataFetched={handleCnpjDataFetched}
         />
-        <AddressSection
-          addresses={addresses}
-          setAddresses={setAddresses}
-        />
         <ContactSection
           data={formData}
           onPessoaChange={handlePessoaChange}
-          contacts={contacts}
-          setContacts={setContacts}
         />
       </div>
 

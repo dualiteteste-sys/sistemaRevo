@@ -2,7 +2,7 @@ import supabase from '@/lib/supabaseClient';
 import { Database } from '@/types/database.types';
 
 export type Empresa = Database['public']['Tables']['empresas']['Row'];
-export type EmpresaUpdate = Partial<Database['public']['Tables']['empresas']['Update']>;
+export type EmpresaUpdate = Partial<Database['public']['Tables']['empresas']['Row']>;
 export type ProvisionEmpresaInput = {
   razao_social: string;
   fantasia: string;
@@ -12,21 +12,19 @@ export type ProvisionEmpresaInput = {
 const LOGO_BUCKET = 'company_logos';
 
 /**
- * Atualiza os dados de uma empresa.
+ * Atualiza os dados da empresa ativa usando uma RPC segura.
  */
-export async function updateCompany(id: string, updateData: EmpresaUpdate): Promise<Empresa> {
-  const { data, error } = await supabase
-    .from('empresas')
-    .update(updateData)
-    .eq('id', id)
-    .select()
-    .single();
+export async function updateCompany(updateData: EmpresaUpdate): Promise<Empresa> {
+  const { data, error } = await supabase.rpc('update_active_company', {
+    p_patch: updateData,
+  });
 
   if (error) {
-    console.error('Error updating company:', error);
+    console.error('Error updating company via RPC:', error);
     throw new Error('Não foi possível atualizar os dados da empresa.');
   }
-  return data;
+  // A RPC retorna um único objeto JSON que o cliente Supabase converte.
+  return data as Empresa;
 }
 
 /**

@@ -4,6 +4,7 @@ import supabase from '@/lib/supabaseClient';
 import { Database } from '../types/database.types';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from './ToastProvider';
+import { ensureSessionAndActiveEmpresa } from '@/lib/auth-bootstrap';
 
 type Empresa = Database['public']['Tables']['empresas']['Row'];
 
@@ -30,21 +31,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { addToast } = useToast();
 
   const setActiveEmpresa = useCallback(async (empresa: Empresa | null) => {
+    console.log('[AUTH] setActiveEmpresa called with:', empresa?.id ?? null);
     setActiveEmpresaState(empresa);
     if (empresa) {
       localStorage.setItem('activeEmpresaId', empresa.id);
-      const { error } = await supabase.rpc('set_active_empresa_for_current_user', { p_empresa_id: empresa.id });
-      if (error) {
+      try {
+        await ensureSessionAndActiveEmpresa(empresa.id);
+      } catch (error: any) {
         console.error("Falha ao definir empresa ativa no backend:", error);
         addToast("Não foi possível trocar de empresa. Tente novamente.", "error");
       }
     } else {
       localStorage.removeItem('activeEmpresaId');
-      await supabase.rpc('set_active_empresa_for_current_user', { p_empresa_id: null });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await supabase.rpc('set_active_empresa_for_current_user', { p_empresa_id: null });
+      }
     }
   }, [addToast]);
 
   const fetchInitialData = useCallback(async (currentSession: Session | null) => {
+    console.log('[AUTH] fetchInitialData called. Session exists:', !!currentSession);
     setLoading(true);
     try {
       if (currentSession?.user) {
@@ -56,22 +63,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } else {
           const fetchedEmpresas = data || [];
           setEmpresas(fetchedEmpresas);
+          console.log('[AUTH] Empresas fetched:', fetchedEmpresas.map(e => e.id));
 
           const { data: whoamiData, error: whoamiError } = await supabase.rpc('whoami');
-          console.log('[RPC][WHOAMI]', { data: whoamiData, error: whoamiError });
+          console.log('[AUTH] whoami response:', { data: whoamiData, error: whoamiError });
 
           const activeId = whoamiData?.empresa_id;
           const active = fetchedEmpresas.find(e => e.id === activeId);
           
           if (active) {
+            console.log('[AUTH] Setting active empresa from whoami:', active.id);
             await setActiveEmpresa(active);
           } else if (fetchedEmpresas.length > 0) {
+            console.log('[AUTH] No active empresa from whoami, setting first one:', fetchedEmpresas[0].id);
             await setActiveEmpresa(fetchedEmpresas[0]);
           } else {
+            console.log('[AUTH] No empresas found for user.');
             await setActiveEmpresa(null);
           }
         }
       } else {
+        console.log('[AUTH] No session, clearing data.');
         setEmpresas([]);
         await setActiveEmpresa(null);
       }
@@ -81,6 +93,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error("Erro ao carregar dados da sessão:", e);
     } finally {
       setLoading(false);
+      console.log('[AUTH] fetchInitialData finished.');
     }
   }, [setActiveEmpresa]);
 
@@ -90,6 +103,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log(`[AUTH] onAuthStateChange event: ${event}`);
       if (event === 'SIGNED_IN' && session?.user.user_metadata?.onboardingIntent) {
         const lastSignIn = new Date(session.user.last_sign_in_at || 0);
         const now = new Date();

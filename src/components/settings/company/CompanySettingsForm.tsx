@@ -18,8 +18,12 @@ const CompanySettingsForm: React.FC = () => {
 
   useEffect(() => {
     if (activeEmpresa) {
-      setFormData(activeEmpresa);
-      setInitialData(activeEmpresa);
+      const initialFormState = {
+        ...activeEmpresa,
+        razao_social: activeEmpresa.razao_social || '',
+      };
+      setFormData(initialFormState);
+      setInitialData(initialFormState);
     }
   }, [activeEmpresa]);
 
@@ -53,7 +57,7 @@ const CompanySettingsForm: React.FC = () => {
       
       setFormData(prev => ({
         ...prev,
-        razao_social: data.razao_social || prev?.razao_social,
+        razao_social: data.razao_social || prev?.razao_social || '',
         fantasia: data.nome_fantasia || prev?.fantasia,
         endereco_cep: data.cep || prev?.endereco_cep,
         endereco_logradouro: data.logradouro || prev?.endereco_logradouro,
@@ -76,7 +80,7 @@ const CompanySettingsForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData || !formData.id) return;
+    if (!formData) return;
 
     setLoading(true);
 
@@ -87,11 +91,13 @@ const CompanySettingsForm: React.FC = () => {
         telefone: formData.telefone?.replace(/\D/g, ''),
     };
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { created_at, ...finalPayload } = updateData;
+    const { created_at, id, ...finalPayload } = updateData;
 
     try {
-      await updateCompany(formData.id, finalPayload);
+      const updatedCompany = await updateCompany(finalPayload);
       addToast('Dados da empresa atualizados com sucesso!', 'success');
+      setInitialData(updatedCompany); // Update initial data to new state
+      setFormData(updatedCompany);
       await refreshEmpresas();
     } catch (error: any) {
       addToast(`Erro ao atualizar empresa: ${error.message}`, 'error');
