@@ -815,6 +815,7 @@ export interface Database {
           fantasia: string | null
           codigo_externo: string | null
           contribuinte_icms: Database["public"]["Enums"]["contribuinte_icms_enum"]
+          contato_tags: string[] | null
         }
         Insert: {
           id?: string
@@ -834,6 +835,7 @@ export interface Database {
           fantasia?: string | null
           codigo_externo?: string | null
           contribuinte_icms?: Database["public"]["Enums"]["contribuinte_icms_enum"]
+          contato_tags?: string[] | null
         }
         Update: {
           id?: string
@@ -853,6 +855,7 @@ export interface Database {
           fantasia?: string | null
           codigo_externo?: string | null
           contribuinte_icms?: Database["public"]["Enums"]["contribuinte_icms_enum"]
+          contato_tags?: string[] | null
         }
       }
       user_active_empresa: {

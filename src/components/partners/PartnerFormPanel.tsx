@@ -24,7 +24,7 @@ const PartnerFormPanel: React.FC<PartnerFormPanelProps> = ({ partner, onSaveSucc
       setFormData(partner);
     } else {
       // Estado inicial para um novo parceiro
-      setFormData({ tipo: 'cliente', tipo_pessoa: 'juridica', isento_ie: false, contribuinte_icms: '9' });
+      setFormData({ tipo: 'cliente', tipo_pessoa: 'juridica', isento_ie: false, contribuinte_icms: '9', contato_tags: [] });
     }
   }, [partner]);
 

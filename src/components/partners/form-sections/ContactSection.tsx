@@ -3,6 +3,8 @@ import { Database } from '@/types/database.types';
 import Section from '../../ui/forms/Section';
 import Input from '../../ui/forms/Input';
 import { phoneMask } from '../../../lib/masks';
+import TagInput from '../../ui/forms/TagInput';
+import TextArea from '../../ui/forms/TextArea';
 
 type Pessoa = Partial<Database['public']['Tables']['pessoas']['Row']>;
 
@@ -26,8 +28,21 @@ const ContactSection: React.FC<ContactSectionProps> = ({ data, onPessoaChange })
       </Section>
       
       <Section title="Outras Informações" description="Detalhes adicionais e organização.">
-        <div className="sm:col-span-6">
-          <Input label="Observações" name="observacoes" value={data.observacoes || ''} onChange={e => onPessoaChange('observacoes', e.target.value)} />
+        <div className="sm:col-span-3">
+          <TagInput
+            label="Tags"
+            tags={data.contato_tags || []}
+            onTagsChange={(tags) => onPessoaChange('contato_tags', tags)}
+          />
+        </div>
+        <div className="sm:col-span-3">
+            <TextArea
+                label="Observações"
+                name="observacoes"
+                value={data.observacoes || ''}
+                onChange={(e) => onPessoaChange('observacoes', e.target.value)}
+                rows={4}
+            />
         </div>
       </Section>
     </>
