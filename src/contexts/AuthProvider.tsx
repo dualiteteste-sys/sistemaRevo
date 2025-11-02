@@ -1,9 +1,17 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
-import { Session, User } from '@supabase/supabase-js';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  ReactNode,
+  useRef,
+} from 'react';
+import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
 import { Empresa } from '@/services/company';
 import { bootstrapEmpresaParaUsuarioAtual } from '@/services/session';
-import { callRpc } from '@/lib/api';
 
 type AuthContextType = {
   user: User | null;
@@ -16,100 +24,162 @@ type AuthContextType = {
   setActiveEmpresa: (empresa: Empresa) => Promise<void>;
 };
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
-  const [activeEmpresa, _setActiveEmpresa] = useState<Empresa | null>(null);
+  const [activeEmpresa, setActiveEmpresaState] = useState<Empresa | null>(null);
 
-  const fetchEmpresas = useCallback(async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('empresa_usuarios')
-        .select('empresas(*)')
-        .eq('user_id', userId);
-      if (error) throw error;
-      const userEmpresas = data.map(item => item.empresas).filter(Boolean) as Empresa[];
-      setEmpresas(userEmpresas);
-      return userEmpresas;
-    } catch (error) {
-      console.error("Error fetching companies:", error);
-      setEmpresas([]);
-      return [];
-    }
-  }, []);
-
-  const setActiveEmpresa = useCallback(async (empresa: Empresa) => {
-    if (empresa.id === activeEmpresa?.id) return;
-    try {
-      await callRpc('set_active_empresa_for_current_user', { p_empresa_id: empresa.id });
-      _setActiveEmpresa(empresa);
-    } catch (error) {
-      console.error("Failed to set active company:", error);
-    }
-  }, [activeEmpresa]);
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
-  };
-
-  const refreshEmpresas = useCallback(async () => {
-    if (user) {
-      await fetchEmpresas(user.id);
-    }
-  }, [user, fetchEmpresas]);
+  const bootOnceRef = useRef(false);
 
   useEffect(() => {
-    setLoading(true);
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
+    let mounted = true;
 
-      if (currentUser) {
-        try {
-          const { empresa_id } = await bootstrapEmpresaParaUsuarioAtual();
-          const userEmpresas = await fetchEmpresas(currentUser.id);
-          const active = userEmpresas.find(e => e.id === empresa_id);
-          _setActiveEmpresa(active || null);
-        } catch (error) {
-          console.error("Auth bootstrap failed:", error);
-          _setActiveEmpresa(null);
-          setEmpresas([]);
-        }
-      } else {
-        setEmpresas([]);
-        _setActiveEmpresa(null);
-      }
+    (async () => {
+      console.log('[AUTH] getSession:init');
+      const { data, error } = await supabase.auth.getSession();
+      if (!mounted) return;
+
+      if (error) console.error('[AUTH][getSession][ERR]', error);
+
+      setSession(data?.session ?? null);
+      setUser(data?.session?.user ?? null);
       setLoading(false);
+      console.log('[AUTH] getSession:done', { hasSession: !!data?.session });
+    })();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      console.log('[AUTH] onAuthStateChange', { hasSession: !!newSession });
+      setSession(newSession ?? null);
+      setUser(newSession?.user ?? null);
     });
 
     return () => {
-      subscription.unsubscribe();
+      mounted = false;
+      sub?.subscription?.unsubscribe?.();
     };
-  }, [fetchEmpresas]);
+  }, []);
+
+  const refreshEmpresas = useCallback(async () => {
+    if (!user) return;
   
-  const value = useMemo(() => ({
-    user,
-    session,
-    loading,
-    empresas,
-    activeEmpresa,
-    signOut,
-    refreshEmpresas,
-    setActiveEmpresa,
-  }), [user, session, loading, empresas, activeEmpresa, refreshEmpresas, setActiveEmpresa]);
+    try {
+      const { data: userEmpresas, error: userEmpresasError } = await supabase
+        .from('empresa_usuarios')
+        .select('empresa_id')
+        .eq('user_id', user.id);
+  
+      if (userEmpresasError) throw userEmpresasError;
+  
+      const empresaIds = userEmpresas.map(ue => ue.empresa_id);
+  
+      if (empresaIds.length === 0) {
+        setEmpresas([]);
+        setActiveEmpresaState(null);
+        return;
+      }
+  
+      const { data: empresasList, error: empresasError } = await supabase
+        .from('empresas')
+        .select('*')
+        .in('id', empresaIds);
+  
+      if (empresasError) throw empresasError;
+      setEmpresas(empresasList ?? []);
+  
+      const { data: activeEmpresaLink, error: activeError } = await supabase
+        .from('user_active_empresa')
+        .select('empresa_id')
+        .eq('user_id', user.id)
+        .single();
+  
+      if (activeError && activeError.code !== 'PGRST116') {
+        throw activeError;
+      }
+  
+      if (activeEmpresaLink) {
+        const active = empresasList?.find(e => e.id === activeEmpresaLink.empresa_id) ?? null;
+        setActiveEmpresaState(active);
+      } else if (empresasList && empresasList.length > 0) {
+        setActiveEmpresaState(empresasList[0]);
+        await supabase.from('user_active_empresa').upsert({ user_id: user.id, empresa_id: empresasList[0].id });
+      } else {
+        setActiveEmpresaState(null);
+      }
+    } catch (e) {
+      console.warn('[AUTH][EMPRESAS][WARN]', e);
+      setEmpresas([]);
+      setActiveEmpresaState(null);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (session && !bootOnceRef.current) {
+      bootOnceRef.current = true;
+      (async () => {
+        try {
+          console.log('[AUTH] bootstrapEmpresaParaUsuarioAtual:start');
+          await bootstrapEmpresaParaUsuarioAtual();
+        } catch (e) {
+          console.warn('[AUTH][BOOTSTRAP][WARN]', e);
+        } finally {
+          await refreshEmpresas();
+          console.log('[AUTH] bootstrapEmpresaParaUsuarioAtual:done');
+        }
+      })();
+    } else if (session) {
+        // If session exists but bootstrap has run, still refresh companies
+        // This handles cases like company data updates
+        refreshEmpresas();
+    }
+  }, [session, refreshEmpresas]);
+
+  const setActiveEmpresa = useCallback(async (empresa: Empresa) => {
+    if (!user) return;
+    const { error } = await supabase
+      .from('user_active_empresa')
+      .upsert({ user_id: user.id, empresa_id: empresa.id }, { onConflict: 'user_id' });
+
+    if (error) {
+      console.error('[AUTH][SET_ACTIVE_EMPRESA][ERR]', error);
+    } else {
+      setActiveEmpresaState(empresa);
+    }
+  }, [user]);
+
+  const signOut = useCallback(async () => {
+    console.log('[AUTH] signOut');
+    await supabase.auth.signOut();
+    setSession(null);
+    setUser(null);
+    setEmpresas([]);
+    setActiveEmpresaState(null);
+    bootOnceRef.current = false;
+  }, []);
+
+  const value = useMemo<AuthContextType>(
+    () => ({
+      user,
+      session,
+      loading,
+      empresas,
+      activeEmpresa,
+      signOut,
+      refreshEmpresas,
+      setActiveEmpresa,
+    }),
+    [user, session, loading, empresas, activeEmpresa, signOut, refreshEmpresas, setActiveEmpresa],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+}
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
+  return ctx;
+}

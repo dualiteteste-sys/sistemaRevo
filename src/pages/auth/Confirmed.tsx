@@ -12,50 +12,39 @@ function parseHashParams(hash: string): Record<string, string> {
 }
 
 export default function AuthConfirmed() {
-  const nav = useNavigate();
+  const navigate = useNavigate();
 
   useEffect(() => {
     (async () => {
       try {
-        const url = new URL(window.location.href);
+        const params = parseHashParams(window.location.hash);
+        const access_token = params['access_token'];
+        const refresh_token = params['refresh_token'];
 
-        // 1) Criar sessão (PKCE ?code=... ou hash #access_token=...)
-        if (url.searchParams.get('code')) {
-          const code = url.searchParams.get('code')!;
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) throw error;
-          console.log('[AUTH] exchangeCodeForSession OK', data.session?.user?.id);
-        } else if (url.hash.includes('access_token')) {
-          const { access_token, refresh_token } = parseHashParams(url.hash);
-          const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
-          if (error) throw error;
-          console.log('[AUTH] setSession OK', data.session?.user?.id);
+        if (access_token && refresh_token) {
+          console.log('[AUTH] setSession from fragment');
+          const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+          if (error) {
+            console.error('[AUTH][setSession][ERR]', error);
+          }
+        } else {
+          console.log('[AUTH] fragment missing tokens, skipping setSession');
         }
-
-        // 2) Sanidade de sessão
-        const { data: s } = await supabase.auth.getSession();
-        if (!s.session) {
-          console.error('[AUTH] Session MISSING');
-          alert('Sessão não criada. Verifique Redirect URLs/Preview.');
-          return nav('/');
-        }
-
-        // 3) Próxima rota do app
-        nav('/app');
-      } catch (err: any) {
-        console.error('[AUTH] /auth/confirmed ERROR', err);
-        alert(`Erro ao confirmar login: ${err?.message || err}`);
-        nav('/');
+      } finally {
+        // Limpa o fragmento da URL e segue para o app
+        history.replaceState({}, document.title, '/auth/confirmed');
+        navigate('/app', { replace: true });
       }
     })();
-  }, [nav]);
+  }, [navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-        <div className="bg-glass-200 backdrop-blur-xl border border-white/30 rounded-3xl shadow-glass-lg p-8 text-center flex flex-col items-center">
-            <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-            <h1 className="text-xl font-bold text-gray-800 mb-2">Confirmando autenticação...</h1>
-        </div>
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="bg-white/70 backdrop-blur-xl border border-white/40 rounded-3xl shadow-lg p-8 text-center">
+        <Loader2 className="w-12 h-12 animate-spin mb-4" />
+        <h1 className="text-xl font-bold mb-2">Confirmando autenticação...</h1>
+        <p className="text-sm opacity-70">Aguarde um instante.</p>
+      </div>
     </div>
   );
 }

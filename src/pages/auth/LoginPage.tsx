@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
-import { motion } from 'framer-motion';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -11,78 +10,71 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || '/app';
+  const from = (location.state as any)?.from?.pathname || '/app';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+    setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      setError(error.message);
-    } else {
+    try {
+      console.log('[AUTH] signInWithPassword', { email });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setError(error.message);
+        return;
+      }
       navigate(from, { replace: true });
+    } catch (err: any) {
+      setError(err?.message ?? 'Falha ao autenticar.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
-      <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">Bem-vindo de volta!</h2>
-      <p className="text-center text-gray-600 mb-6">Faça login para acessar o REVO ERP.</p>
-      
-      {error && <p className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-sm">{error}</p>}
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <form onSubmit={handleLogin} className="w-full max-w-sm bg-white/70 backdrop-blur-xl border border-white/40 rounded-3xl shadow-lg p-6">
+        <h1 className="text-xl font-bold text-center mb-6">Bem-vindo de volta!</h1>
 
-      <form onSubmit={handleLogin} className="space-y-4">
-        <div>
-          <label className="text-sm font-medium text-gray-700" htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full mt-1 p-3 bg-white/50 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition"
-            placeholder="seu@email.com"
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-gray-700" htmlFor="password">Senha</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="w-full mt-1 p-3 bg-white/50 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition"
-            placeholder="••••••••"
-          />
-        </div>
+        {error && <div className="mb-3 text-sm text-red-600">{error}</div>}
+
+        <label className="block mb-2 text-sm">Email</label>
+        <input
+          type="email"
+          className="w-full mb-4 rounded-lg border px-3 py-2"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="seu@email.com"
+          required
+        />
+
+        <label className="block mb-2 text-sm">Senha</label>
+        <input
+          type="password"
+          className="w-full mb-6 rounded-lg border px-3 py-2"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="••••••••"
+          required
+        />
+
         <button
           type="submit"
+          className="w-full rounded-lg px-4 py-2 font-semibold bg-blue-600 text-white disabled:opacity-60"
           disabled={loading}
-          className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center"
         >
-          {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Entrar'}
+          {loading ? 'Entrando...' : 'Entrar'}
         </button>
-      </form>
 
-      <p className="text-center text-sm text-gray-600 mt-6">
-        Não tem uma conta?{' '}
-        <Link to="/auth/signup" className="font-medium text-blue-600 hover:underline">
-          Crie sua conta
-        </Link>
-      </p>
-    </motion.div>
+        <p className="text-center text-sm mt-6">
+          Não tem uma conta?{' '}
+          <Link to="/auth/signup" className="font-medium text-blue-600 hover:underline">
+            Crie sua conta
+          </Link>
+        </p>
+      </form>
+    </div>
   );
 };
 
