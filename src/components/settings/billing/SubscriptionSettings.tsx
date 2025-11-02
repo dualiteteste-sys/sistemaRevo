@@ -4,7 +4,7 @@ import { useSubscription } from '../../../contexts/SubscriptionProvider';
 import { Loader2, Sparkles, AlertTriangle, CheckCircle, RefreshCw, ServerOff, CreditCard, PlusCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '../../../contexts/ToastProvider';
-import supabase from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { Database } from '../../../types/database.types';
 
 type EmpresaAddon = Database['public']['Tables']['empresa_addons']['Row'];

@@ -13,6 +13,9 @@ import ProductsPage from './pages/products/ProductsPage';
 import PartnersPage from './pages/partners/PartnersPage';
 import CarriersPage from './pages/carriers/CarriersPage';
 import AuthConfirmed from './pages/auth/Confirmed';
+import CepSearchPage from './pages/tools/CepSearchPage';
+import CnpjSearchPage from './pages/tools/CnpjSearchPage';
+import NfeInputPage from './pages/tools/NfeInputPage';
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const { session, loading } = useAuth();
@@ -59,6 +62,9 @@ const App = () => {
         <Route path="products" element={<ProductsPage />} />
         <Route path="partners" element={<PartnersPage />} />
         <Route path="carriers" element={<CarriersPage />} />
+        <Route path="cep-search" element={<CepSearchPage />} />
+        <Route path="cnpj-search" element={<CnpjSearchPage />} />
+        <Route path="nfe-input" element={<NfeInputPage />} />
         
         <Route path="billing/success" element={<BillingSuccessPage />} />
         <Route path="billing/cancel" element={<BillingCancelPage />} />

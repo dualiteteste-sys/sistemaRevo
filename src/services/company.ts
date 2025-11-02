@@ -1,5 +1,6 @@
 import { callRpc } from '@/lib/api';
 import { Database } from '@/types/database.types';
+import { supabase } from '@/lib/supabaseClient';
 
 export type Empresa = Database['public']['Tables']['empresas']['Row'];
 export type EmpresaUpdate = Partial<Database['public']['Tables']['empresas']['Row']>;
@@ -31,10 +32,9 @@ export async function updateCompany(updateData: EmpresaUpdate): Promise<Empresa>
  */
 export async function provisionCompany(input: ProvisionEmpresaInput): Promise<Empresa> {
     try {
-        const data = await callRpc<Empresa[]>('provision_empresa_for_current_user', {
-            p_razao_social: input.razao_social,
+        const data = await callRpc<Empresa[]>('bootstrap_empresa_for_current_user', {
+            p_nome: input.razao_social,
             p_fantasia: input.fantasia,
-            p_email: input.email ?? null,
         });
         if (!data || data.length === 0) {
             throw new Error("A criação da empresa não retornou dados.");
@@ -64,11 +64,8 @@ export async function uploadCompanyLogo(empresaId: string, file: File): Promise<
     const fileName = `${sanitizedName}-${Date.now()}.${fileExt}`;
     const filePath = `${empresaId}/${fileName}`;
 
-    const { error } = await callRpc('storage.from.upload', {
-        bucket: LOGO_BUCKET,
-        path: filePath,
-        file,
-        options: { upsert: true },
+    const { data, error } = await supabase.storage.from(LOGO_BUCKET).upload(filePath, file, {
+        upsert: true,
     });
 
     if (error) {
@@ -76,7 +73,7 @@ export async function uploadCompanyLogo(empresaId: string, file: File): Promise<
         throw new Error('Falha ao enviar o logo.');
     }
 
-    return filePath;
+    return data.path;
 }
 
 /**
@@ -91,10 +88,7 @@ export async function deleteCompanyLogo(logoUrl: string): Promise<void> {
         return;
     }
 
-    const { error } = await callRpc('storage.from.remove', {
-        bucket: LOGO_BUCKET,
-        paths: [path],
-    });
+    const { error } = await supabase.storage.from(LOGO_BUCKET).remove([path]);
 
     if (error) {
         console.error('Error deleting logo:', error);

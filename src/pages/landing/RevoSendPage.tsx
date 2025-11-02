@@ -6,7 +6,7 @@ import Footer from '../../components/landing/Footer';
 import SignUpModal from '../../components/landing/SignUpModal';
 import LoginModal from '../../components/landing/LoginModal';
 import { AnimatePresence } from 'framer-motion';
-import supabase from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { Database } from '../../types/database.types';
 import { useAuth } from '../../contexts/AuthProvider';
 import { useToast } from '../../contexts/ToastProvider';

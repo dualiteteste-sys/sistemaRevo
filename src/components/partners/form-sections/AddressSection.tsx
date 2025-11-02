@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { EnderecoPayload } from '@/services/partners';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, ChevronDown, MapPin, Loader2 } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, MapPin, Loader2, Search } from 'lucide-react';
 import Section from '../../ui/forms/Section';
 import Input from '../../ui/forms/Input';
 import Select from '../../ui/forms/Select';

@@ -1,4 +1,4 @@
-import supabase from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
 /**
  * Inicia o processo de checkout para um plano de assinatura.

@@ -4,7 +4,7 @@ import {
   Users2, Plug, UserSquare, Box, BarChart2, FileDown, ClipboardList,
   FileSignature, HeartHandshake, Store, Receipt, Truck, Percent,
   Bot, Undo2, ClipboardCheck, Banknote, Wallet, TrendingUp,
-  TrendingDown, Landmark, FileSpreadsheet, LogOut
+  TrendingDown, Landmark, FileSpreadsheet, LogOut, Search, Building
 } from 'lucide-react';
 
 export interface MenuItem {
@@ -47,7 +47,7 @@ export const menuConfig: { name: string; icon: React.ElementType; href: string; 
     gradient: 'from-orange-500 to-orange-600',
     children: [
       { name: 'Ordens de Compra', icon: ShoppingCart, href: '#' },
-      { name: 'Notas de Entrada', icon: FileDown, href: '#' },
+      { name: 'NFe de Entrada', icon: FileDown, href: '/app/nfe-input' },
       { name: 'Controle de Estoques', icon: Warehouse, href: '#' },
       { name: 'Relatórios', icon: BarChart2, href: '#' },
     ]
@@ -97,6 +97,16 @@ export const menuConfig: { name: string; icon: React.ElementType; href: string; 
         { name: 'Extrato Bancário', icon: FileSpreadsheet, href: '#' },
         { name: 'Relatórios', icon: BarChart2, href: '#' },
     ]
+  },
+  {
+    name: 'Ferramentas',
+    icon: Wrench,
+    href: '#',
+    gradient: 'from-cyan-500 to-cyan-600',
+    children: [
+      { name: 'Consulta CEP', icon: Search, href: '/app/cep-search' },
+      { name: 'Consulta CNPJ', icon: Building, href: '/app/cnpj-search' },
+    ],
   },
   {
     name: 'Configurações',
