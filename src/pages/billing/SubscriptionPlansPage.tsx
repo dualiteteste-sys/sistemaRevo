@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
 import { Database } from '../../types/database.types';
 import PricingCard from '../../components/billing/PricingCard';
 import { Loader2 } from 'lucide-react';
@@ -113,8 +113,8 @@ const SubscriptionPlansPage: React.FC = () => {
           <PricingCard
             key={plan.id}
             plan={plan}
-            onSubscribe={() => handleCheckout(plan)}
-            isSubscribing={checkoutLoading === plan.stripe_price_id}
+            onStartTrial={() => handleCheckout(plan)}
+            isLoading={checkoutLoading === plan.stripe_price_id}
             index={index}
           />
         ))}

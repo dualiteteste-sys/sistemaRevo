@@ -5,6 +5,7 @@ import { useToast } from '../../contexts/ToastProvider';
 import Section from '../ui/forms/Section';
 import Input from '../ui/forms/Input';
 import Select from '../ui/forms/Select';
+import { cnpjMask } from '../../lib/masks';
 
 interface CarrierFormPanelProps {
   carrier: Partial<Carrier> | null;
@@ -29,14 +30,25 @@ const CarrierFormPanel: React.FC<CarrierFormPanelProps> = ({ carrier, onSaveSucc
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const maskedValue = cnpjMask(e.target.value);
+    handleFormChange('cnpj', maskedValue);
+  };
+
   const handleSave = async () => {
     if (!formData.nome_razao_social) {
       addToast('O Nome/Razão Social é obrigatório.', 'error');
       return;
     }
+    
+    const payload = {
+        ...formData,
+        cnpj: formData.cnpj?.replace(/\D/g, '') || null,
+    };
+
     setIsSaving(true);
     try {
-      const savedCarrier = await saveCarrier(formData);
+      const savedCarrier = await saveCarrier(payload);
       addToast('Transportadora salva com sucesso!', 'success');
       onSaveSuccess(savedCarrier);
     } catch (error: any) {
@@ -52,7 +64,7 @@ const CarrierFormPanel: React.FC<CarrierFormPanelProps> = ({ carrier, onSaveSucc
         <Section title="Dados da Transportadora" description="Informações de identificação da transportadora.">
           <Input label="Nome / Razão Social" name="nome_razao_social" value={formData.nome_razao_social || ''} onChange={(e) => handleFormChange('nome_razao_social', e.target.value)} required className="sm:col-span-6" />
           <Input label="Nome Fantasia" name="nome_fantasia" value={formData.nome_fantasia || ''} onChange={(e) => handleFormChange('nome_fantasia', e.target.value)} className="sm:col-span-6" />
-          <Input label="CNPJ" name="cnpj" value={formData.cnpj || ''} onChange={(e) => handleFormChange('cnpj', e.target.value)} className="sm:col-span-3" />
+          <Input label="CNPJ" name="cnpj" value={formData.cnpj || ''} onChange={handleCnpjChange} className="sm:col-span-3" />
           <Input label="Inscrição Estadual" name="inscr_estadual" value={formData.inscr_estadual || ''} onChange={(e) => handleFormChange('inscr_estadual', e.target.value)} className="sm:col-span-3" />
           <Select label="Status" name="status" value={formData.status || 'ativa'} onChange={(e) => handleFormChange('status', e.target.value)} required className="sm:col-span-3">
             <option value="ativa">Ativa</option>

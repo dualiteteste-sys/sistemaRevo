@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import supabase from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { Database } from '../../types/database.types';
 import PricingCard from './PricingCard';
 import { Loader2 } from 'lucide-react';

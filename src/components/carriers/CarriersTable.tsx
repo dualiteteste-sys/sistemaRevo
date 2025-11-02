@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CarrierListItem } from '../../services/carriers';
 import { Edit, Trash2, ArrowUpDown } from 'lucide-react';
+import { cnpjMask } from '../../lib/masks';
 
 interface CarriersTableProps {
   carriers: CarrierListItem[];
@@ -59,7 +60,7 @@ const CarriersTable: React.FC<CarriersTableProps> = ({ carriers, onEdit, onDelet
                 className="hover:bg-gray-50"
               >
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{carrier.nome_razao_social}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{carrier.cnpj || '-'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{carrier.cnpj ? cnpjMask(carrier.cnpj) : '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{carrier.inscr_estadual || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${

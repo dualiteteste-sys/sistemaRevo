@@ -1,5 +1,5 @@
-// src/lib/auth-bootstrap.ts
 import { supabase } from '@/lib/supabaseClient';
+import { callRpc } from '@/lib/api';
 
 export async function ensureSessionAndActiveEmpresa(empresaId: string) {
   console.log('[AUTH] ensureSessionAndActiveEmpresa:init', { empresaId });
@@ -14,12 +14,13 @@ export async function ensureSessionAndActiveEmpresa(empresaId: string) {
   }
   console.log('[AUTH] Session OK', { user: data.session.user?.id });
 
-  const { error: rpcErr } = await supabase.rpc('set_active_empresa_for_current_user', {
-    p_empresa_id: empresaId,
-  });
-  if (rpcErr) {
+  try {
+    await callRpc('set_active_empresa_for_current_user', {
+        p_empresa_id: empresaId,
+    });
+    console.log('[RPC][set_active_empresa_for_current_user][OK]', { empresaId });
+  } catch (rpcErr) {
     console.error('[RPC][set_active_empresa_for_current_user][ERR]', rpcErr);
     throw rpcErr;
   }
-  console.log('[RPC][set_active_empresa_for_current_user][OK]', { empresaId });
 }

@@ -1,4 +1,4 @@
-import supabase from '@/lib/supabaseClient';
+import { callRpc } from '@/lib/api';
 import { Database } from '@/types/database.types';
 
 export type Empresa = Database['public']['Tables']['empresas']['Row'];
@@ -15,39 +15,35 @@ const LOGO_BUCKET = 'company_logos';
  * Atualiza os dados da empresa ativa usando uma RPC segura.
  */
 export async function updateCompany(updateData: EmpresaUpdate): Promise<Empresa> {
-  const { data, error } = await supabase.rpc('update_active_company', {
-    p_patch: updateData,
-  });
-
-  if (error) {
-    console.error('Error updating company via RPC:', error);
-    throw new Error('Não foi possível atualizar os dados da empresa.');
-  }
-  // A RPC retorna um único objeto JSON que o cliente Supabase converte.
-  return data as Empresa;
+    try {
+        const data = await callRpc<Empresa>('update_active_company', {
+            p_patch: updateData,
+        });
+        return data;
+    } catch (error) {
+        console.error('Error updating company via RPC:', error);
+        throw new Error('Não foi possível atualizar os dados da empresa.');
+    }
 }
 
 /**
  * Cria uma nova empresa para o usuário logado via RPC.
  */
 export async function provisionCompany(input: ProvisionEmpresaInput): Promise<Empresa> {
-  const { data: sessionRes } = await supabase.auth.getSession();
-  if (!sessionRes?.session?.access_token) {
-    throw new Error('NO_SESSION: usuário não autenticado.');
-  }
-
-  const { data, error } = await supabase.rpc('provision_empresa_for_current_user', {
-    p_razao_social: input.razao_social,
-    p_fantasia: input.fantasia,
-    p_email: input.email ?? null,
-  }).single();
-
-  if (error) {
-    console.error('[ONBOARD] RPC provision_empresa_for_current_user error', error);
-    throw error;
-  }
-
-  return data as unknown as Empresa;
+    try {
+        const data = await callRpc<Empresa[]>('provision_empresa_for_current_user', {
+            p_razao_social: input.razao_social,
+            p_fantasia: input.fantasia,
+            p_email: input.email ?? null,
+        });
+        if (!data || data.length === 0) {
+            throw new Error("A criação da empresa não retornou dados.");
+        }
+        return data[0];
+    } catch (error) {
+        console.error('[ONBOARD] RPC provision_empresa_for_current_user error', error);
+        throw error;
+    }
 }
 
 function sanitizeName(name: string) {
@@ -68,11 +64,12 @@ export async function uploadCompanyLogo(empresaId: string, file: File): Promise<
     const fileName = `${sanitizedName}-${Date.now()}.${fileExt}`;
     const filePath = `${empresaId}/${fileName}`;
 
-    const { error } = await supabase.storage
-        .from(LOGO_BUCKET)
-        .upload(filePath, file, {
-            upsert: true, // Substitui se já existir um com o mesmo nome
-        });
+    const { error } = await callRpc('storage.from.upload', {
+        bucket: LOGO_BUCKET,
+        path: filePath,
+        file,
+        options: { upsert: true },
+    });
 
     if (error) {
         console.error('Error uploading logo:', error);
@@ -86,7 +83,6 @@ export async function uploadCompanyLogo(empresaId: string, file: File): Promise<
  * Remove o logo da empresa do storage.
  */
 export async function deleteCompanyLogo(logoUrl: string): Promise<void> {
-    // Extrai o caminho do arquivo da URL completa
     const url = new URL(logoUrl);
     const path = url.pathname.split(`/${LOGO_BUCKET}/`)[1];
 
@@ -95,9 +91,10 @@ export async function deleteCompanyLogo(logoUrl: string): Promise<void> {
         return;
     }
 
-    const { error } = await supabase.storage
-        .from(LOGO_BUCKET)
-        .remove([path]);
+    const { error } = await callRpc('storage.from.remove', {
+        bucket: LOGO_BUCKET,
+        paths: [path],
+    });
 
     if (error) {
         console.error('Error deleting logo:', error);

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthProvider';
-import supabase from '@/lib/supabaseClient';
 import { useToast } from '../../../contexts/ToastProvider';
 import { Loader2, Trash2, Archive, RotateCcw, DatabaseBackup } from 'lucide-react';
 import GlassCard from '../../ui/GlassCard';
 import ConfirmationModal from '../../ui/ConfirmationModal';
+import { callRpc } from '@/lib/api';
 
 const DataManagementContent: React.FC = () => {
   const { activeEmpresa } = useAuth();
@@ -21,14 +21,12 @@ const DataManagementContent: React.FC = () => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc('purge_legacy_products', {
+      const data = await callRpc<{ to_archive_count: number }[]>('purge_legacy_products', {
         p_empresa_id: activeEmpresa.id,
         p_dry_run: true,
-      }).single();
+      });
 
-      if (error) throw error;
-
-      setLegacyCount(data?.to_archive_count || 0);
+      setLegacyCount(data?.[0]?.to_archive_count || 0);
     } catch (error: any) {
       addToast('Erro ao verificar dados legados.', 'error');
       setLegacyCount(0);
@@ -46,14 +44,12 @@ const DataManagementContent: React.FC = () => {
 
     setIsPurging(true);
     try {
-      const { data, error } = await supabase.rpc('purge_legacy_products', {
+      const data = await callRpc<{ purged_count: number }[]>('purge_legacy_products', {
         p_empresa_id: activeEmpresa.id,
         p_dry_run: false,
-      }).single();
+      });
 
-      if (error) throw error;
-
-      addToast(`${data.purged_count} produtos legados foram arquivados e removidos.`, 'success');
+      addToast(`${data?.[0]?.purged_count || 0} produtos legados foram arquivados e removidos.`, 'success');
       await fetchLegacyCount();
     } catch (error: any) {
       addToast(`Falha na limpeza: ${error.message}`, 'error');
@@ -68,13 +64,11 @@ const DataManagementContent: React.FC = () => {
 
     setIsRestoring(true);
     try {
-      const { data, error } = await supabase.rpc('restore_legacy_products', {
+      const data = await callRpc<{ restored_count: number }[]>('restore_legacy_products', {
         p_empresa_id: activeEmpresa.id,
-      }).single();
+      });
 
-      if (error) throw error;
-
-      addToast(`${data.restored_count} produtos foram restaurados do arquivo.`, 'success');
+      addToast(`${data?.[0]?.restored_count || 0} produtos foram restaurados do arquivo.`, 'success');
       await fetchLegacyCount();
     } catch (error: any) {
       addToast(`Falha na restauração: ${error.message}`, 'error');

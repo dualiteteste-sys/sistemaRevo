@@ -1,4 +1,5 @@
-import supabase from './supabaseClient';
+import { supabase } from './supabaseClient';
+import { callRpc } from '@/lib/api';
 
 const BUCKET = 'product_images';
 
@@ -66,14 +67,14 @@ export async function removeProductImage(imageId: string, imagePath: string): Pr
   // 1. Remove do Storage
   const { error: storageError } = await supabase.storage.from(BUCKET).remove([imagePath]);
   if (storageError) {
-    // Loga o erro mas continua, para não deixar registro órfão no DB
     console.warn(`[MEDIA][DELETE] Falha ao remover do Storage, mas continuando para o DB:`, storageError);
   }
 
   // 2. Remove do DB via RPC
-  const { error: rpcError } = await supabase.rpc("delete_product_image_db", { p_image_id: imageId });
-  if (rpcError) {
-    throw new Error(`Falha ao remover registro da imagem: ${rpcError.message}`);
+  try {
+    await callRpc("delete_product_image_db", { p_image_id: imageId });
+  } catch (rpcError) {
+    throw new Error(`Falha ao remover registro da imagem: ${(rpcError as Error).message}`);
   }
 }
 
@@ -81,12 +82,12 @@ export async function removeProductImage(imageId: string, imagePath: string): Pr
  * Define uma imagem como principal para um produto.
  */
 export async function setPrincipalProductImage(produtoId: string, imageId: string): Promise<void> {
-  const { error } = await supabase.rpc("set_principal_product_image", {
-    p_produto_id: produtoId,
-    p_imagem_id: imageId,
-  });
-
-  if (error) {
-    throw new Error(`Falha ao definir imagem principal: ${error.message}`);
+  try {
+    await callRpc("set_principal_product_image", {
+        p_produto_id: produtoId,
+        p_imagem_id: imageId,
+    });
+  } catch (error) {
+    throw new Error(`Falha ao definir imagem principal: ${(error as Error).message}`);
   }
 }

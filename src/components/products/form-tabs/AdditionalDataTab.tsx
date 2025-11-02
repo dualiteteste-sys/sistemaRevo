@@ -4,7 +4,7 @@ import Input from '../../ui/forms/Input';
 import TextArea from '../../ui/forms/TextArea';
 import Section from '../../ui/forms/Section';
 import { useAuth } from '../../../contexts/AuthProvider';
-import supabase from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
 interface AdditionalDataTabProps {
   data: ProductFormData;

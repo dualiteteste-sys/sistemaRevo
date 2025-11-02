@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import SalesDashboard from './pages/SalesDashboard';
 import ProductsPage from './pages/products/ProductsPage';
 import PartnersPage from './pages/partners/PartnersPage';
+import CarriersPage from './pages/carriers/CarriersPage';
 import AuthConfirmed from './pages/auth/Confirmed';
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -57,6 +58,7 @@ const App = () => {
         <Route path="sales-dashboard" element={<SalesDashboard />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="partners" element={<PartnersPage />} />
+        <Route path="carriers" element={<CarriersPage />} />
         
         <Route path="billing/success" element={<BillingSuccessPage />} />
         <Route path="billing/cancel" element={<BillingCancelPage />} />

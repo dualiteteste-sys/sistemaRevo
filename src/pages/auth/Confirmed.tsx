@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
-import { useEnsureEmpresaAtiva } from '@/hooks/useEnsureEmpresaAtiva';
 import { Loader2 } from 'lucide-react';
 
 function parseHashParams(hash: string): Record<string, string> {
@@ -14,13 +13,6 @@ function parseHashParams(hash: string): Record<string, string> {
 
 export default function AuthConfirmed() {
   const nav = useNavigate();
-
-  // Se você tiver guardado dados do onboarding:
-  const nomeEmpresa = localStorage.getItem('onboarding_nome_empresa') || undefined;
-  const fantasiaEmpresa = localStorage.getItem('onboarding_fantasia_empresa') || undefined;
-
-  // Garante empresa ativa (cria/vincula/ativa se necessário, idempotente)
-  useEnsureEmpresaAtiva(nomeEmpresa, fantasiaEmpresa);
 
   useEffect(() => {
     (async () => {

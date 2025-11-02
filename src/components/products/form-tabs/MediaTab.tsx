@@ -3,7 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UploadCloud, Loader2, Star, Trash2 } from 'lucide-react';
 import { uploadProductImage, removeProductImage, setPrincipalProductImage } from "@/lib/storage";
-import supabase from "@/lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/contexts/ToastProvider";
 import ConfirmationModal from "@/components/ui/ConfirmationModal";
 

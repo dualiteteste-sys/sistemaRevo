@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Save } from 'lucide-react';
-import { PartnerDetails, savePartner, PartnerPayload } from '../../services/partners';
+import { savePartner, PartnerPayload, PartnerDetails, EnderecoPayload, ContatoPayload } from '../../services/partners';
 import { useToast } from '../../contexts/ToastProvider';
-import { Database } from '@/types/database.types';
 import IdentificationSection from './form-sections/IdentificationSection';
 import ContactSection from './form-sections/ContactSection';
-
-type Pessoa = Database['public']['Tables']['pessoas']['Row'];
+import AddressSection from './form-sections/AddressSection';
+import AdditionalContactsSection from './form-sections/AdditionalContactsSection';
+import { Pessoa } from '../../services/partners';
 
 interface PartnerFormPanelProps {
   partner: PartnerDetails | null;
@@ -17,14 +17,17 @@ interface PartnerFormPanelProps {
 const PartnerFormPanel: React.FC<PartnerFormPanelProps> = ({ partner, onSaveSuccess, onClose }) => {
   const { addToast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
-  const [formData, setFormData] = useState<Partial<Pessoa>>({});
+  const [formData, setFormData] = useState<Partial<PartnerDetails>>({});
 
   useEffect(() => {
     if (partner) {
-      setFormData(partner);
+      setFormData({
+        ...partner,
+        enderecos: partner.enderecos || [],
+        contatos: partner.contatos || [],
+      });
     } else {
-      // Estado inicial para um novo parceiro
-      setFormData({ tipo: 'cliente', tipo_pessoa: 'juridica', isento_ie: false, contribuinte_icms: '9', contato_tags: [] });
+      setFormData({ tipo: 'cliente', tipo_pessoa: 'juridica', isento_ie: false, contribuinte_icms: '9', contato_tags: [], enderecos: [], contatos: [] });
     }
   }, [partner]);
 
@@ -32,13 +35,21 @@ const PartnerFormPanel: React.FC<PartnerFormPanelProps> = ({ partner, onSaveSucc
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleEnderecosChange = (enderecos: EnderecoPayload[]) => {
+    setFormData(prev => ({ ...prev, enderecos }));
+  };
+
+  const handleContatosChange = (contatos: ContatoPayload[]) => {
+    setFormData(prev => ({ ...prev, contatos }));
+  };
+
   const handleCnpjDataFetched = (data: any) => {
     setFormData(prev => ({
       ...prev,
-      nome: data.razao_social || prev.nome,
-      fantasia: data.nome_fantasia || prev.fantasia,
-      email: data.email || prev.email,
-      telefone: data.ddd_telefone_1 || prev.telefone,
+      nome: data.razao_social || prev?.nome,
+      fantasia: data.nome_fantasia || prev?.fantasia,
+      email: data.email || prev?.email,
+      telefone: data.ddd_telefone_1 || prev?.telefone,
     }));
   };
 
@@ -50,19 +61,19 @@ const PartnerFormPanel: React.FC<PartnerFormPanelProps> = ({ partner, onSaveSucc
     
     setIsSaving(true);
     try {
-      const payload: PartnerPayload = {
-        pessoa: formData,
-      };
+      const { enderecos, contatos, ...pessoaData } = formData;
 
-      console.log('[FORM][PARTNER_SUBMIT]', payload);
+      const payload: PartnerPayload = {
+        pessoa: pessoaData,
+        enderecos: enderecos,
+        contatos: contatos,
+      };
 
       const savedPartner = await savePartner(payload);
       
-      console.log('[RPC][CREATE_UPDATE_PARTNER][OK]', savedPartner);
       addToast('Salvo com sucesso!', 'success');
       onSaveSuccess(savedPartner);
     } catch (error: any) {
-      console.error('[RPC][CREATE_UPDATE_PARTNER][ERR]', error);
       addToast(error.message, 'error');
     } finally {
       setIsSaving(false);
@@ -80,6 +91,14 @@ const PartnerFormPanel: React.FC<PartnerFormPanelProps> = ({ partner, onSaveSucc
         <ContactSection
           data={formData}
           onPessoaChange={handlePessoaChange}
+        />
+        <AddressSection
+          enderecos={formData.enderecos || []}
+          onEnderecosChange={handleEnderecosChange}
+        />
+        <AdditionalContactsSection
+          contatos={formData.contatos || []}
+          onContatosChange={handleContatosChange}
         />
       </div>
 

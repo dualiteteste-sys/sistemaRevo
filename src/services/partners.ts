@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabaseClient';
+import { callRpc } from '@/lib/api';
 import { Database } from '@/types/database.types';
 
 export type PartnerListItem = {
@@ -11,28 +11,76 @@ export type PartnerListItem = {
   updated_at: string;
 };
 
-export type Pessoa = Database['public']['Tables']['pessoas']['Row'];
-export type PartnerDetails = Pessoa & {
-  enderecos: any[]; // Always empty
-  contatos: any[]; // Always empty
+// HACK: Add fields that might be missing from generated types but exist in the DB
+export type Pessoa = Database['public']['Tables']['pessoas']['Row'] & {
+  celular?: string | null;
+  site?: string | null;
 };
 
 export type PartnerPessoa = Partial<Pessoa>;
 
+// New types based on OpenAPI spec
+export type EnderecoPayload = {
+  id?: string | null;
+  tipo_endereco?: string | null;
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  uf?: string | null;
+  cep?: string | null;
+  pais?: string | null;
+};
+
+export type ContatoPayload = {
+  id?: string | null;
+  nome?: string | null;
+  email?: string | null;
+  telefone?: string | null;
+  cargo?: string | null;
+  observacoes?: string | null;
+};
+
 export type PartnerPayload = {
   pessoa: PartnerPessoa;
+  enderecos?: EnderecoPayload[] | null;
+  contatos?: ContatoPayload[] | null;
+};
+
+export type PartnerDetails = Pessoa & {
+  enderecos: EnderecoPayload[];
+  contatos: ContatoPayload[];
 };
 
 export async function savePartner(payload: PartnerPayload): Promise<PartnerDetails> {
   console.log('[SERVICE][SAVE_PARTNER]', payload);
-  const { data, error } = await supabase.rpc('create_update_partner', {p_payload: payload});
-  if (error) {
+  try {
+    // Data cleaning
+    const cleanedPessoa = {
+      ...payload.pessoa,
+      doc_unico: payload.pessoa.doc_unico?.replace(/\D/g, '') || null,
+      telefone: payload.pessoa.telefone?.replace(/\D/g, '') || null,
+      celular: (payload.pessoa as any).celular?.replace(/\D/g, '') || null,
+    };
+
+    const cleanedPayload = {
+      ...payload,
+      pessoa: cleanedPessoa,
+      enderecos: payload.enderecos?.map(e => ({...e, cep: e.cep?.replace(/\D/g, '') || null})) || [],
+      contatos: payload.contatos?.map(c => ({...c, telefone: c.telefone?.replace(/\D/g, '') || null})) || [],
+    };
+
+    const data = await callRpc<PartnerDetails>('create_update_partner', { p_payload: cleanedPayload });
+    return data;
+  } catch (error: any) {
     console.error('[SERVICE][SAVE_PARTNER][ERROR]', error);
+    if (error.message && error.message.includes('ux_pessoas_empresa_id_doc_unico')) {
+        throw new Error('Já existe um parceiro com este documento (CPF/CNPJ).');
+    }
     throw error;
   }
-  return data;
 }
-
 
 export async function getPartners(options: {
   page: number;
@@ -45,44 +93,50 @@ export async function getPartners(options: {
   const offset = (page - 1) * pageSize;
   const orderString = `${sortBy.column} ${sortBy.ascending ? 'asc' : 'desc'}`;
 
-  const { data: countData, error: countError } = await supabase.rpc('count_partners', {
-    p_q: searchTerm || null,
-    p_tipo: (filterType as Database['public']['Enums']['pessoa_tipo']) || null,
-  });
+  try {
+    const count = await callRpc<number>('count_partners', {
+      p_q: searchTerm || null,
+      p_tipo: (filterType as Database['public']['Enums']['pessoa_tipo']) || null,
+    });
 
-  if (countError) {
-    console.error('[SERVICE][COUNT_PARTNERS]', countError);
-    throw new Error('Não foi possível contar os registros.');
-  }
+    if (Number(count) === 0) {
+      return { data: [], count: 0 };
+    }
 
-  const { data, error } = await supabase.rpc('list_partners', {
-    p_limit: pageSize,
-    p_offset: offset,
-    p_q: searchTerm || null,
-    p_tipo: (filterType as Database['public']['Enums']['pessoa_tipo']) || null,
-    p_order: orderString,
-  });
+    const data = await callRpc<PartnerListItem[]>('list_partners', {
+      p_limit: pageSize,
+      p_offset: offset,
+      p_q: searchTerm || null,
+      p_tipo: (filterType as Database['public']['Enums']['pessoa_tipo']) || null,
+      p_order: orderString,
+    });
 
-  if (error) {
-    console.error('[SERVICE][LIST_PARTNERS]', error);
+    return { data: data ?? [], count: Number(count) };
+  } catch (error) {
+    console.error('[SERVICE][GET_PARTNERS]', error);
     throw new Error('Não foi possível listar os registros.');
   }
-
-  return { data: (data as PartnerListItem[]) ?? [], count: countData ?? 0 };
 }
 
 export async function getPartnerDetails(id: string): Promise<PartnerDetails | null> {
-  const { data, error } = await supabase.rpc('get_partner_details', { p_id: id });
-  if (error) {
+  try {
+    const data = await callRpc<PartnerDetails>('get_partner_details', { p_id: id });
+    // Ensure arrays exist even if RPC returns null
+    if (data) {
+        data.enderecos = data.enderecos || [];
+        data.contatos = data.contatos || [];
+    }
+    return data;
+  } catch (error) {
     console.error('[SERVICE][GET_PARTNER_DETAILS]', error);
     throw new Error('Erro ao buscar detalhes do registro.');
   }
-  return data as PartnerDetails | null;
 }
 
 export async function deletePartner(id: string): Promise<void> {
-  const { error } = await supabase.rpc('delete_partner', { p_id: id });
-  if (error) {
+  try {
+    await callRpc('delete_partner', { p_id: id });
+  } catch (error: any) {
     console.error('[SERVICE][DELETE_PARTNER]', error);
     throw new Error(error.message || 'Erro ao excluir o registro.');
   }

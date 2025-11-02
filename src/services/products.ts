@@ -1,4 +1,5 @@
-import supabase from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
+import { callRpc } from '@/lib/api';
 import { Database } from '@/types/database.types';
 
 // Type for the product list, now derived from the RPC's return type.
@@ -34,41 +35,29 @@ export async function getProducts(options: {
   const offset = (page - 1) * pageSize;
   const orderString = `${sortBy.column} ${sortBy.ascending ? 'asc' : 'desc'}`;
 
-  // Call the count RPC
-  const { data: countData, error: countError } = await supabase.rpc(
-    'produtos_count_for_current_user',
-    {
-      p_q: searchTerm || null,
-      p_status: status,
+  try {
+    const count = await callRpc<number>('produtos_count_for_current_user', {
+        p_q: searchTerm || null,
+        p_status: status,
+    });
+
+    if (Number(count) === 0) {
+        return { data: [], count: 0 };
     }
-  );
+    
+    const data = await callRpc<Product[]>('produtos_list_for_current_user', {
+        p_limit: pageSize,
+        p_offset: offset,
+        p_q: searchTerm || null,
+        p_status: status,
+        p_order: orderString,
+    });
 
-  if (countError) {
-    console.error('[SERVICE] [COUNT_PRODUCTS_RPC] error:', countError);
-    throw new Error('Não foi possível contar os produtos.');
-  }
-
-  const count = countData ?? 0;
-
-  if (count === 0) {
-    return { data: [], count: 0 };
-  }
-  
-  // Call the list RPC
-  const { data, error } = await supabase.rpc('produtos_list_for_current_user', {
-    p_limit: pageSize,
-    p_offset: offset,
-    p_q: searchTerm || null,
-    p_status: status,
-    p_order: orderString,
-  });
-
-  if (error) {
-    console.error('[SERVICE] [LIST_PRODUCTS_RPC] error:', error);
+    return { data: data ?? [], count: Number(count) };
+  } catch (error) {
+    console.error('[SERVICE] [GET_PRODUCTS_RPC] error:', error);
     throw new Error('Não foi possível listar os produtos.');
   }
-
-  return { data: (data ?? []) as Product[], count };
 }
 
 
@@ -84,7 +73,6 @@ export async function getProductDetails(id: string): Promise<FullProduct | null>
     .single();
 
   if (error) {
-    // Not found is expected for legacy products, so we don't throw, just return null.
     if (error.code !== 'PGRST116') {
       console.error('[SERVICE] [GET_PRODUCT_DETAILS] error:', error);
       throw new Error('Erro ao buscar detalhes do produto.');
@@ -100,30 +88,23 @@ export async function getProductDetails(id: string): Promise<FullProduct | null>
 export async function saveProduct(productData: ProductPayload, empresaId: string): Promise<FullProduct> {
   const payload = { ...productData, empresa_id: empresaId };
 
-  if (payload.id) {
-    // UPDATE
-    const { id, ...patch } = payload;
-    const { data, error } = await supabase.rpc('update_product_for_current_user', {
-      p_id: id,
-      patch: patch as any,
-    });
-
-    if (error) {
-      console.error('[RPC] [UPDATE_PRODUCT] error:', error);
-      throw new Error(error.message || 'Não foi possível atualizar o produto.');
+  try {
+    if (payload.id) {
+      const { id, ...patch } = payload;
+      const data = await callRpc<FullProduct>('update_product_for_current_user', {
+        p_id: id,
+        patch: patch as any,
+      });
+      return data;
+    } else {
+      const data = await callRpc<FullProduct>('create_product_for_current_user', {
+        payload: payload as any,
+      });
+      return data;
     }
-    return data as FullProduct;
-  } else {
-    // CREATE
-    const { data, error } = await supabase.rpc('create_product_for_current_user', {
-      payload: payload as any,
-    });
-
-    if (error) {
-      console.error('[RPC] [CREATE_PRODUCT] error:', error);
-      throw new Error(error.message || 'Não foi possível criar o produto.');
-    }
-    return data as FullProduct;
+  } catch (error: any) {
+    console.error('[RPC] [SAVE_PRODUCT] error:', error);
+    throw new Error(error.message || 'Não foi possível salvar o produto.');
   }
 }
 
@@ -131,9 +112,9 @@ export async function saveProduct(productData: ProductPayload, empresaId: string
  * Deletes a product using the secure RPC.
  */
 export async function deleteProductById(productId: string): Promise<void> {
-  const { error } = await supabase.rpc('delete_product_for_current_user', { p_id: productId });
-
-  if (error) {
+  try {
+    await callRpc('delete_product_for_current_user', { p_id: productId });
+  } catch (error: any) {
     console.error('[RPC] [DELETE_PRODUCT] error:', error);
     throw new Error('Não foi possível excluir o produto.');
   }
