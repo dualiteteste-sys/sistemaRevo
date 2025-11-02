@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import Header from '../../components/landing/Header';
 import Hero from '../../components/landing/Hero';
-import Pricing from '../../components/landing/Pricing';
+// import Pricing from '../../components/landing/Pricing';
 import Features from '../../components/landing/Features';
 import FAQ from '../../components/landing/FAQ';
 import Footer from '../../components/landing/Footer';
@@ -57,7 +57,7 @@ const LandingPage: React.FC = () => {
       <Header onLoginClick={openLoginModal} />
       <main>
         <Hero onSignUpClick={() => openSignUpModal({ type: 'trial', planSlug: 'PRO', billingCycle: 'yearly' })} />
-        <Pricing onSignUpClick={openSignUpModal} />
+        {/* <Pricing onSignUpClick={openSignUpModal} /> */}
         <Features />
         <FAQ />
       </main>

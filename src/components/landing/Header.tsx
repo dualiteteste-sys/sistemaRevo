@@ -5,7 +5,6 @@ import { Menu, X, ChevronDown } from 'lucide-react';
 import RevoLogo from './RevoLogo';
 
 const navLinks = [
-  { name: 'Planos', href: '#pricing' },
   { name: 'Recursos', href: '#features' },
   { name: 'FAQ', href: '#faq' },
 ];
