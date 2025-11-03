@@ -6,6 +6,7 @@ import IdentificationSection from './form-sections/IdentificationSection';
 import ContactSection from './form-sections/ContactSection';
 import AddressSection from './form-sections/AddressSection';
 import AdditionalContactsSection from './form-sections/AdditionalContactsSection';
+import FinancialSection from './form-sections/FinancialSection';
 import { Pessoa } from '../../services/partners';
 
 interface PartnerFormPanelProps {
@@ -88,13 +89,17 @@ const PartnerFormPanel: React.FC<PartnerFormPanelProps> = ({ partner, onSaveSucc
           onChange={handlePessoaChange}
           onCnpjDataFetched={handleCnpjDataFetched}
         />
+        <AddressSection
+          enderecos={formData.enderecos || []}
+          onEnderecosChange={handleEnderecosChange}
+        />
         <ContactSection
           data={formData}
           onPessoaChange={handlePessoaChange}
         />
-        <AddressSection
-          enderecos={formData.enderecos || []}
-          onEnderecosChange={handleEnderecosChange}
+        <FinancialSection
+          data={formData}
+          onChange={handlePessoaChange}
         />
         <AdditionalContactsSection
           contatos={formData.contatos || []}

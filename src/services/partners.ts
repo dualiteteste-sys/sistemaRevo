@@ -15,6 +15,9 @@ export type PartnerListItem = {
 export type Pessoa = Database['public']['Tables']['pessoas']['Row'] & {
   celular?: string | null;
   site?: string | null;
+  limite_credito?: number | null;
+  condicao_pagamento?: string | null;
+  informacoes_bancarias?: string | null;
 };
 
 export type PartnerPessoa = Partial<Pessoa>;
@@ -56,17 +59,19 @@ export type PartnerDetails = Pessoa & {
 export async function savePartner(payload: PartnerPayload): Promise<PartnerDetails> {
   console.log('[SERVICE][SAVE_PARTNER]', payload);
   try {
-    // Data cleaning
-    const cleanedPessoa = {
+    // Explicitly build the pessoa object to ensure all fields are present
+    const pessoaPayload: PartnerPessoa = {
       ...payload.pessoa,
       doc_unico: payload.pessoa.doc_unico?.replace(/\D/g, '') || null,
       telefone: payload.pessoa.telefone?.replace(/\D/g, '') || null,
-      celular: (payload.pessoa as any).celular?.replace(/\D/g, '') || null,
+      celular: payload.pessoa.celular?.replace(/\D/g, '') || null,
+      limite_credito: payload.pessoa.limite_credito,
+      condicao_pagamento: payload.pessoa.condicao_pagamento,
+      informacoes_bancarias: payload.pessoa.informacoes_bancarias,
     };
 
     const cleanedPayload = {
-      ...payload,
-      pessoa: cleanedPessoa,
+      pessoa: pessoaPayload,
       enderecos: payload.enderecos?.map(e => ({...e, cep: e.cep?.replace(/\D/g, '') || null})) || [],
       contatos: payload.contatos?.map(c => ({...c, telefone: c.telefone?.replace(/\D/g, '') || null})) || [],
     };
@@ -120,13 +125,15 @@ export async function getPartners(options: {
 
 export async function getPartnerDetails(id: string): Promise<PartnerDetails | null> {
   try {
-    const data = await callRpc<PartnerDetails>('get_partner_details', { p_id: id });
-    // Ensure arrays exist even if RPC returns null
+    const rpcResponse = await callRpc<PartnerDetails | PartnerDetails[]>('get_partner_details', { p_id: id });
+    
+    const data = Array.isArray(rpcResponse) ? rpcResponse[0] : rpcResponse;
+
     if (data) {
         data.enderecos = data.enderecos || [];
         data.contatos = data.contatos || [];
     }
-    return data;
+    return data || null;
   } catch (error) {
     console.error('[SERVICE][GET_PARTNER_DETAILS]', error);
     throw new Error('Erro ao buscar detalhes do registro.');

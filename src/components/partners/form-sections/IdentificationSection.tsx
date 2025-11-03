@@ -121,7 +121,7 @@ const IdentificationSection: React.FC<IdentificationSectionProps> = ({ data, onC
               <Input label="Fantasia" name="fantasia" value={data.fantasia || ''} onChange={e => onChange('fantasia', e.target.value)} />
             </motion.div>
         )}
-       </AnimatePresence>
+      </AnimatePresence>
       
       {/* --- Other Fields --- */}
       <Select label="Tipo de contato" name="tipo" value={data.tipo || 'cliente'} onChange={(e) => onChange('tipo', e.target.value)} required className="sm:col-span-3">
