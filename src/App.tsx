@@ -12,6 +12,7 @@ import SalesDashboard from './pages/SalesDashboard';
 import ProductsPage from './pages/products/ProductsPage';
 import PartnersPage from './pages/partners/PartnersPage';
 import CarriersPage from './pages/carriers/CarriersPage';
+import ServicesPage from './pages/services/ServicesPage';
 import AuthConfirmed from './pages/auth/Confirmed';
 import CepSearchPage from './pages/tools/CepSearchPage';
 import CnpjSearchPage from './pages/tools/CnpjSearchPage';
@@ -62,6 +63,7 @@ const App = () => {
         <Route path="products" element={<ProductsPage />} />
         <Route path="partners" element={<PartnersPage />} />
         <Route path="carriers" element={<CarriersPage />} />
+        <Route path="services" element={<ServicesPage />} />
         <Route path="cep-search" element={<CepSearchPage />} />
         <Route path="cnpj-search" element={<CnpjSearchPage />} />
         <Route path="nfe-input" element={<NfeInputPage />} />

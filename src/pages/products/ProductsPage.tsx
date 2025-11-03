@@ -98,6 +98,18 @@ const ProductsPage: React.FC = () => {
     }));
   };
 
+  const handleClone = async (product: productsService.Product) => {
+    if (!product.id) return;
+    try {
+      const clone = await productsService.cloneProduct(product.id);
+      addToast('Produto clonado com sucesso!', 'success');
+      setSelectedProduct(clone);
+      setIsFormOpen(true);
+    } catch (e: any) {
+      addToast(e.message || 'Erro ao clonar produto.', 'error');
+    }
+  };
+
   return (
     <div className="p-1">
       <div className="flex justify-between items-center mb-6">
@@ -147,7 +159,7 @@ const ProductsPage: React.FC = () => {
             {searchTerm && <p className="text-sm">Tente ajustar sua busca.</p>}
           </div>
         ) : (
-          <ProductsTable products={products} onEdit={(p) => handleOpenForm(p)} onDelete={handleOpenDeleteModal} sortBy={sortBy} onSort={handleSort} />
+          <ProductsTable products={products} onEdit={(p) => handleOpenForm(p)} onDelete={handleOpenDeleteModal} onClone={handleClone} sortBy={sortBy} onSort={handleSort} />
         )}
       </div>
 

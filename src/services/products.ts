@@ -119,3 +119,17 @@ export async function deleteProductById(productId: string): Promise<void> {
     throw new Error('Não foi possível excluir o produto.');
   }
 }
+
+/**
+ * Clones a product using the secure RPC.
+ */
+export async function cloneProduct(
+  productId: string,
+  overrides?: { nome?: string; sku?: string }
+): Promise<FullProduct> {
+  const data = await callRpc<FullProduct>('create_product_clone_for_current_user', {
+    p_source_product_id: productId,
+    p_overrides: overrides || {},
+  });
+  return data;
+}

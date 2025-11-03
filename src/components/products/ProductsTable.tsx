@@ -1,12 +1,13 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '../../services/products';
-import { Edit, Trash2, ArrowUpDown } from 'lucide-react';
+import { Edit, Trash2, ArrowUpDown, Copy } from 'lucide-react';
 
 interface ProductsTableProps {
   products: Product[];
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
+  onClone: (product: Product) => void;
   sortBy: { column: keyof Product; ascending: boolean };
   onSort: (column: keyof Product) => void;
 }
@@ -32,7 +33,7 @@ const SortableHeader: React.FC<{
   );
 };
 
-const ProductsTable: React.FC<ProductsTableProps> = ({ products, onEdit, onDelete, sortBy, onSort }) => {
+const ProductsTable: React.FC<ProductsTableProps> = ({ products, onEdit, onDelete, onClone, sortBy, onSort }) => {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200">
@@ -77,10 +78,13 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ products, onEdit, onDelet
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex items-center justify-end gap-4">
-                    <button onClick={() => onEdit(product)} className="text-indigo-600 hover:text-indigo-900">
+                    <button onClick={() => onClone(product)} className="text-blue-600 hover:text-blue-900" title="Clonar produto">
+                      <Copy size={18} />
+                    </button>
+                    <button onClick={() => onEdit(product)} className="text-indigo-600 hover:text-indigo-900" title="Editar produto">
                       <Edit size={18} />
                     </button>
-                    <button onClick={() => onDelete(product)} className="text-red-600 hover:text-red-900">
+                    <button onClick={() => onDelete(product)} className="text-red-600 hover:text-red-900" title="Excluir produto">
                       <Trash2 size={18} />
                     </button>
                   </div>
