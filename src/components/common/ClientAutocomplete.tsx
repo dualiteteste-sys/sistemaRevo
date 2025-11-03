@@ -1,79 +1,113 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { searchClients, ClientHit } from '@/services/os';
+import React, { useEffect, useRef, useState } from 'react';
+import { searchClients, ClientHit } from '@/services/clients';
+import { useDebounce } from '@/hooks/useDebounce';
+import { Loader2 } from 'lucide-react';
 
 type Props = {
-  value?: string | null;                 // cliente_id
-  onChange: (id: string | null, label?: string) => void;
+  value: string | null;
+  onChange: (id: string | null, name?: string) => void;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  initialName?: string;
 };
 
-export default function ClientAutocomplete({ value, onChange, placeholder, disabled, className }: Props) {
+export default function ClientAutocomplete({ value, onChange, placeholder, disabled, className, initialName }: Props) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [hits, setHits] = useState<ClientHit[]>([]);
   const ref = useRef<HTMLDivElement>(null);
 
-  // fecha dropdown ao clicar fora
+  const debouncedQuery = useDebounce(query, 300);
+
   useEffect(() => {
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
+    if (value && initialName) {
+      setQuery(initialName);
+    } else if (!value) {
+      setQuery('');
+    }
+  }, [value, initialName]);
+
+  useEffect(() => {
+    const handleDocClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleDocClick);
+    return () => document.removeEventListener('mousedown', handleDocClick);
   }, []);
 
-  // debounce
   useEffect(() => {
-    const t = setTimeout(async () => {
-      const q = query.trim();
-      if (q.length < 2) { setHits([]); return; }
-      setLoading(true);
-      const res = await searchClients(q, 20);
-      setHits(res);
-      setLoading(false);
-      setOpen(true);
-    }, 250);
-    return () => clearTimeout(t);
-  }, [query]);
+    const search = async () => {
+      if (debouncedQuery.length < 2) {
+        setHits([]);
+        return;
+      }
+      if (value && query === initialName) {
+        return;
+      }
 
-  const selectedLabel = useMemo(() => {
-    const found = hits.find(h => h.id === value);
-    return found?.label;
-  }, [hits, value]);
+      setLoading(true);
+      try {
+        const res = await searchClients(debouncedQuery, 20);
+        setHits(res);
+        setOpen(true);
+      } catch (e) {
+        console.error('[RPC][ERROR] search_clients_for_current_user', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    search();
+  }, [debouncedQuery, value, initialName]);
+
+  const handleSelect = (hit: ClientHit) => {
+    setQuery(hit.label);
+    onChange(hit.id, hit.label);
+    setOpen(false);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newQuery = e.target.value;
+    setQuery(newQuery);
+    if (value) {
+      onChange(null);
+    }
+  };
 
   return (
     <div className={`relative ${className || ''}`} ref={ref}>
       <input
-        className="w-full border rounded px-3 py-2"
-        placeholder={placeholder ?? 'Nome/CPF/CNPJ (MVP texto ou ID)'}
-        value={query || selectedLabel || ''}
-        onChange={e => { setQuery(e.target.value); onChange(null); }}
+        className="w-full p-3 bg-white/80 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition shadow-sm"
+        placeholder={placeholder ?? 'Nome/CPF/CNPJ...'}
+        value={query}
+        onChange={handleInputChange}
         onFocus={() => { if (query.length >= 2 && hits.length) setOpen(true); }}
         disabled={disabled}
       />
-      {loading && <div className="absolute right-2 top-2 text-xs text-gray-500">…</div>}
+      {loading && <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500"><Loader2 className="animate-spin" size={16} /></div>}
       {open && hits.length > 0 && (
-        <div className="absolute z-10 mt-1 w-full bg-white border rounded shadow-lg max-h-56 overflow-auto">
+        <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-60 overflow-auto">
           {hits.map(h => (
             <div
               key={h.id}
-              className="px-3 py-2 cursor-pointer hover:bg-gray-50"
+              className="px-4 py-3 cursor-pointer hover:bg-blue-50"
               onMouseDown={(e) => {
                 e.preventDefault();
-                onChange(h.id, h.label);
-                setQuery(h.label);
-                setOpen(false);
+                handleSelect(h);
               }}
             >
-              {h.label}
+              <p className="font-medium text-gray-800">{h.nome}</p>
+              <p className="text-sm text-gray-500">{h.doc_unico}</p>
             </div>
           ))}
         </div>
       )}
       {open && !loading && hits.length === 0 && query.length >= 2 && (
-        <div className="absolute z-10 mt-1 w-full bg-white border rounded shadow px-3 py-2 text-sm text-gray-500">
-          Sem resultados
+        <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow px-4 py-3 text-sm text-gray-500">
+          Nenhum cliente encontrado.
         </div>
       )}
     </div>

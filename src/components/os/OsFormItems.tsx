@@ -1,88 +1,90 @@
 import React from 'react';
-import { OrdemServicoItemPayload } from '@/services/os';
-import { Plus, Trash2 } from 'lucide-react';
-import Input from '../ui/forms/Input';
-import { useNumericField } from '@/hooks/useNumericField';
+import { OrdemServicoItem } from '@/services/os';
+import { Trash2, Wrench, Package } from 'lucide-react';
+import Section from '../ui/forms/Section';
+import { motion, AnimatePresence } from 'framer-motion';
+import ItemAutocomplete, { ItemSearchResult } from './ItemAutocomplete';
 
 interface OsFormItemsProps {
-  items: OrdemServicoItemPayload[];
-  onItemsChange: (items: OrdemServicoItemPayload[]) => void;
-  onRemoveItem: (index: number) => void;
+  items: OrdemServicoItem[];
+  onRemoveItem: (itemId: string) => void;
+  onAddItem: (item: ItemSearchResult) => void;
+  isAddingItem: boolean;
 }
 
 const ItemRow: React.FC<{
-  item: OrdemServicoItemPayload;
-  index: number;
-  onUpdate: (index: number, field: keyof OrdemServicoItemPayload, value: any) => void;
-  onRemove: (index: number) => void;
-}> = ({ item, index, onUpdate, onRemove }) => {
+  item: OrdemServicoItem;
+  onRemove: (itemId: string) => void;
+}> = ({ item, onRemove }) => {
   
-  const quantidadeProps = useNumericField(item.quantidade, (value) => onUpdate(index, 'quantidade', value));
-  const precoProps = useNumericField(item.preco, (value) => onUpdate(index, 'preco', value));
-  const descontoProps = useNumericField(item.desconto_pct, (value) => onUpdate(index, 'desconto_pct', value));
-
   const total = (item.quantidade || 0) * (item.preco || 0) * (1 - (item.desconto_pct || 0) / 100);
+  const isService = !!item.servico_id;
 
   return (
-    <div className="grid grid-cols-12 gap-2 items-end p-2 rounded-lg hover:bg-gray-50">
-      <div className="col-span-4">
-        <Input label={index === 0 ? "Descrição do Item" : ""} name={`desc-${index}`} value={item.descricao || ''} onChange={e => onUpdate(index, 'descricao', e.target.value)} placeholder="Serviço ou Produto" />
-      </div>
-      <div className="col-span-2">
-        <Input label={index === 0 ? "Qtd." : ""} name={`qtd-${index}`} {...quantidadeProps} />
-      </div>
-      <div className="col-span-2">
-        <Input label={index === 0 ? "Preço Unit." : ""} name={`preco-${index}`} {...precoProps} endAdornment="R$" />
-      </div>
-      <div className="col-span-2">
-        <Input label={index === 0 ? "Desc. %" : ""} name={`desc-${index}`} {...descontoProps} endAdornment="%" />
-      </div>
-      <div className="col-span-1 text-right">
-        {index === 0 && <label className="block text-sm font-medium text-gray-700 mb-1">Total</label>}
-        <div className="p-3 text-gray-700 font-medium">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}</div>
-      </div>
-      <div className="col-span-1 flex items-center justify-center pb-2">
-        <button type="button" onClick={() => onRemove(index)} className="p-2 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full">
+    <motion.tr 
+        layout
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, x: -20 }}
+        transition={{ duration: 0.3 }}
+        className="hover:bg-gray-50"
+    >
+      <td className="px-2 py-2 align-middle">
+        <div className="flex items-center gap-2">
+            {isService ? <Wrench size={16} className="text-gray-400" /> : <Package size={16} className="text-gray-400" />}
+            <span className="font-medium">{item.descricao}</span>
+        </div>
+      </td>
+      <td className="px-2 py-2 align-middle w-24 text-center">{item.quantidade}</td>
+      <td className="px-2 py-2 align-middle w-32 text-right">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.preco || 0)}</td>
+      <td className="px-2 py-2 align-middle w-28 text-right">{item.desconto_pct || 0}%</td>
+      <td className="px-2 py-2 align-middle text-right w-32 font-semibold">
+        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}
+      </td>
+      <td className="px-2 py-2 align-middle text-center w-16">
+        <button type="button" onClick={() => onRemove(item.id)} className="p-2 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full">
           <Trash2 size={16} />
         </button>
-      </div>
-    </div>
+      </td>
+    </motion.tr>
   );
 };
 
-const OsFormItems: React.FC<OsFormItemsProps> = ({ items, onItemsChange, onRemoveItem }) => {
-  const handleAddItem = () => {
-    onItemsChange([...items, { quantidade: 1, preco: 0, desconto_pct: 0 }]);
-  };
-
-  const handleUpdateItem = (index: number, field: keyof OrdemServicoItemPayload, value: any) => {
-    const newItems = [...items];
-    const updatedItem = { ...newItems[index], [field]: value };
-    
-    // Recalculate total for the updated item
-    const qty = updatedItem.quantidade || 0;
-    const price = updatedItem.preco || 0;
-    const discount = updatedItem.desconto_pct || 0;
-    updatedItem.total = qty * price * (1 - discount / 100);
-
-    newItems[index] = updatedItem;
-    onItemsChange(newItems);
-  };
-
+const OsFormItems: React.FC<OsFormItemsProps> = ({ items, onRemoveItem, onAddItem, isAddingItem }) => {
   return (
-    <div className="pt-8 mt-8 border-t border-gray-200">
-      <h3 className="text-lg font-semibold text-gray-800">Itens da Ordem de Serviço</h3>
-      <div className="mt-4 space-y-2">
-        {items.map((item, index) => (
-          <ItemRow key={item.id || index} item={item} index={index} onUpdate={handleUpdateItem} onRemove={onRemoveItem} />
-        ))}
-      </div>
-      <div className="mt-4">
-        <button type="button" onClick={handleAddItem} className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50">
-          <Plus size={16} /> Adicionar Item
-        </button>
-      </div>
-    </div>
+    <Section title="Itens da Ordem de Serviço" description="Adicione os produtos e serviços que compõem esta O.S.">
+        <div className="sm:col-span-6">
+            <ItemAutocomplete onSelect={onAddItem} disabled={isAddingItem} />
+            <div className="mt-4 overflow-x-auto">
+                <table className="min-w-full">
+                    <thead className="border-b border-gray-200">
+                        <tr>
+                            <th className="px-2 py-2 text-left text-sm font-medium text-gray-600">Descrição</th>
+                            <th className="px-2 py-2 text-center text-sm font-medium text-gray-600">Qtd.</th>
+                            <th className="px-2 py-2 text-right text-sm font-medium text-gray-600">Preço Unit.</th>
+                            <th className="px-2 py-2 text-right text-sm font-medium text-gray-600">Desc. %</th>
+                            <th className="px-2 py-2 text-right text-sm font-medium text-gray-600">Total</th>
+                            <th className="px-2 py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <AnimatePresence>
+                            {items.map((item) => (
+                                <ItemRow key={item.id} item={item} onRemove={onRemoveItem} />
+                            ))}
+                        </AnimatePresence>
+                        {items.length === 0 && (
+                            <tr>
+                                <td colSpan={6} className="text-center py-8 text-gray-500">
+                                    Nenhum item adicionado.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </Section>
   );
 };
 

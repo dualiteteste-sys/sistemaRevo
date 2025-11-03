@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Save } from 'lucide-react';
-import { OrdemServicoDetails, OrdemServicoItemPayload, saveOs, deleteOsItem } from '@/services/os';
+import { OrdemServicoDetails, saveOs, deleteOsItem, addServiceItem, addProductItem, getOsDetails } from '@/services/os';
+import { getPartnerDetails } from '@/services/partners';
 import { useToast } from '@/contexts/ToastProvider';
 import Section from '../ui/forms/Section';
 import Input from '../ui/forms/Input';
@@ -9,6 +10,8 @@ import TextArea from '../ui/forms/TextArea';
 import { Database } from '@/types/database.types';
 import OsFormItems from './OsFormItems';
 import { useNumericField } from '@/hooks/useNumericField';
+import ClientAutocomplete from '../common/ClientAutocomplete';
+import { ItemSearchResult } from './ItemAutocomplete';
 
 interface OsFormPanelProps {
   os: OrdemServicoDetails | null;
@@ -26,37 +29,81 @@ const statusOptions: { value: Database['public']['Enums']['status_os']; label: s
 const OsFormPanel: React.FC<OsFormPanelProps> = ({ os, onSaveSuccess, onClose }) => {
   const { addToast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
+  const [isAddingItem, setIsAddingItem] = useState(false);
   const [formData, setFormData] = useState<Partial<OrdemServicoDetails>>({});
-  const [items, setItems] = useState<OrdemServicoItemPayload[]>([]);
-  const [itemsToDelete, setItemsToDelete] = useState<string[]>([]);
+  const [clientName, setClientName] = useState('');
 
   const descontoProps = useNumericField(formData.desconto_valor, (value) => handleFormChange('desconto_valor', value));
 
   useEffect(() => {
     if (os) {
       setFormData(os);
-      setItems(os.itens || []);
+      if (os.cliente_id) {
+        getPartnerDetails(os.cliente_id).then(partner => {
+          if (partner) setClientName(partner.nome);
+        });
+      } else {
+        setClientName('');
+      }
     } else {
-      setFormData({ status: 'orcamento', desconto_valor: 0, total_itens: 0, total_geral: 0 });
-      setItems([]);
+      setFormData({ status: 'orcamento', desconto_valor: 0, total_itens: 0, total_geral: 0, itens: [] });
+      setClientName('');
     }
-    setItemsToDelete([]);
   }, [os]);
+
+  const refreshOsData = async (osId: string) => {
+    try {
+        const updatedOs = await getOsDetails(osId);
+        setFormData(updatedOs);
+    } catch (error: any) {
+        addToast("Erro ao atualizar dados da O.S.", "error");
+    }
+  };
 
   const handleFormChange = (field: keyof OrdemServicoDetails, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleItemsChange = (newItems: OrdemServicoItemPayload[]) => {
-    setItems(newItems);
+  const handleRemoveItem = async (itemId: string) => {
+    try {
+        await deleteOsItem(itemId);
+        if(formData.id) await refreshOsData(formData.id);
+        addToast('Item removido.', 'success');
+    } catch (error: any) {
+        addToast(error.message, 'error');
+    }
   };
 
-  const handleRemoveItem = (index: number) => {
-    const itemToRemove = items[index];
-    if (itemToRemove.id) {
-        setItemsToDelete(prev => [...prev, itemToRemove.id!]);
+  const handleAddItem = async (item: ItemSearchResult) => {
+    setIsAddingItem(true);
+    try {
+        let currentOsId = formData.id;
+
+        if (!currentOsId) {
+            if (!formData.descricao) {
+                addToast('Adicione uma descrição à O.S. antes de adicionar itens.', 'warning');
+                return;
+            }
+            const newOs = await saveOs(formData);
+            currentOsId = newOs.id;
+            setFormData(newOs);
+        }
+
+        if (!currentOsId) throw new Error("Não foi possível obter o ID da Ordem de Serviço.");
+
+        if (item.type === 'service') {
+            await addServiceItem(currentOsId, item.id);
+        } else {
+            await addProductItem(currentOsId, item.id);
+        }
+        
+        await refreshOsData(currentOsId);
+        addToast(`${item.type === 'service' ? 'Serviço' : 'Produto'} adicionado.`, 'success');
+    } catch (error: any) {
+        addToast(error.message, 'error');
+    } finally {
+        setIsAddingItem(false);
     }
-    setItems(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSave = async () => {
@@ -67,13 +114,7 @@ const OsFormPanel: React.FC<OsFormPanelProps> = ({ os, onSaveSuccess, onClose })
 
     setIsSaving(true);
     try {
-      // First, delete items marked for deletion
-      await Promise.all(itemsToDelete.map(id => deleteOsItem(id)));
-
-      // Then, save the OS and its current items
-      const { itens, ...osData } = formData;
-      const savedOs = await saveOs(osData, items);
-      
+      const savedOs = await saveOs(formData);
       addToast('Ordem de Serviço salva com sucesso!', 'success');
       onSaveSuccess(savedOs);
     } catch (error: any) {
@@ -83,9 +124,6 @@ const OsFormPanel: React.FC<OsFormPanelProps> = ({ os, onSaveSuccess, onClose })
     }
   };
 
-  const totalItens = items.reduce((acc, item) => acc + (item.total || 0), 0);
-  const totalGeral = totalItens - (formData.desconto_valor || 0);
-
   return (
     <div className="flex flex-col h-full">
       <div className="flex-grow p-6 overflow-y-auto scrollbar-styled">
@@ -94,7 +132,16 @@ const OsFormPanel: React.FC<OsFormPanelProps> = ({ os, onSaveSuccess, onClose })
           <Select label="Status" name="status" value={formData.status || 'orcamento'} onChange={e => handleFormChange('status', e.target.value)} className="sm:col-span-2">
             {statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
           </Select>
-          <Input label="Cliente" name="cliente_id" value={formData.cliente_id || ''} onChange={e => handleFormChange('cliente_id', e.target.value)} className="sm:col-span-4" placeholder="Buscar cliente..." />
+          <ClientAutocomplete
+            value={formData.cliente_id || null}
+            initialName={clientName}
+            onChange={(id, name) => {
+              handleFormChange('cliente_id', id);
+              if (name) setClientName(name);
+            }}
+            placeholder="Buscar cliente..."
+            className="sm:col-span-4"
+          />
         </Section>
 
         <Section title="Datas e Prazos" description="Agendamento e execução do serviço">
@@ -103,17 +150,17 @@ const OsFormPanel: React.FC<OsFormPanelProps> = ({ os, onSaveSuccess, onClose })
           <Input label="Hora" name="hora" type="time" value={formData.hora || ''} onChange={e => handleFormChange('hora', e.target.value)} className="sm:col-span-2" />
         </Section>
         
-        <OsFormItems items={items} onItemsChange={handleItemsChange} onRemoveItem={handleRemoveItem} />
+        <OsFormItems items={formData.itens || []} onRemoveItem={handleRemoveItem} onAddItem={handleAddItem} isAddingItem={isAddingItem} />
 
         <Section title="Financeiro" description="Valores e condições de pagamento">
           <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">Total dos Itens</label>
-            <div className="p-3 bg-gray-100 rounded-lg text-right font-semibold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalItens)}</div>
+            <div className="p-3 bg-gray-100 rounded-lg text-right font-semibold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(formData.total_itens || 0)}</div>
           </div>
           <Input label="Desconto (R$)" name="desconto_valor" {...descontoProps} className="sm:col-span-2" />
           <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">Total Geral</label>
-            <div className="p-3 bg-blue-100 text-blue-800 rounded-lg text-right font-bold text-lg">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral)}</div>
+            <div className="p-3 bg-blue-100 text-blue-800 rounded-lg text-right font-bold text-lg">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(formData.total_geral || 0)}</div>
           </div>
           <Input label="Forma de Recebimento" name="forma_recebimento" value={formData.forma_recebimento || ''} onChange={e => handleFormChange('forma_recebimento', e.target.value)} className="sm:col-span-3" />
           <Input label="Condição de Pagamento" name="condicao_pagamento" value={formData.condicao_pagamento || ''} onChange={e => handleFormChange('condicao_pagamento', e.target.value)} className="sm:col-span-3" />

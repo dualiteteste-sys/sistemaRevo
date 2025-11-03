@@ -4,7 +4,7 @@ import * as svc from '@/services/services';
 import ServicesTable from '@/components/services/ServicesTable';
 import ServiceFormPanel from '@/components/services/ServiceFormPanel';
 import { useToast } from '@/contexts/ToastProvider';
-import { Loader2, PlusCircle, Search, Wrench } from 'lucide-react';
+import { Loader2, PlusCircle, Search, Wrench, DatabaseBackup } from 'lucide-react';
 import Pagination from '@/components/ui/Pagination';
 import ConfirmationModal from '@/components/ui/ConfirmationModal';
 import Modal from '@/components/ui/Modal';
@@ -31,6 +31,7 @@ export default function ServicesPage() {
   const [serviceToDelete, setServiceToDelete] = useState<svc.Service | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
   const { addToast } = useToast();
 
   const handleOpenForm = async (service: svc.Service | null = null) => {
@@ -102,17 +103,40 @@ export default function ServicesPage() {
     }));
   };
 
+  const handleSeedServices = async () => {
+    setIsSeeding(true);
+    try {
+      const seededServices = await svc.seedDefaultServices();
+      addToast(`${seededServices.length} serviços padrão foram adicionados!`, 'success');
+      refresh();
+    } catch (e: any) {
+      addToast(e.message || 'Erro ao popular serviços.', 'error');
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   return (
     <div className="p-1">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Serviços</h1>
-        <button
-          onClick={() => handleOpenForm()}
-          className="flex items-center gap-2 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <PlusCircle size={20} />
-          Novo Serviço
-        </button>
+        <div className="flex items-center gap-2">
+            <button
+              onClick={handleSeedServices}
+              disabled={isSeeding || loading}
+              className="flex items-center gap-2 bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+            >
+              {isSeeding ? <Loader2 className="animate-spin" size={20} /> : <DatabaseBackup size={20} />}
+              Popular Dados
+            </button>
+            <button
+              onClick={() => handleOpenForm()}
+              className="flex items-center gap-2 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <PlusCircle size={20} />
+              Novo Serviço
+            </button>
+        </div>
       </div>
 
       <div className="mb-4 flex gap-4">
@@ -136,10 +160,19 @@ export default function ServicesPage() {
         ) : error ? (
           <div className="h-96 flex items-center justify-center text-red-500">{error}</div>
         ) : services.length === 0 ? (
-          <div className="h-96 flex flex-col items-center justify-center text-gray-500">
+          <div className="h-96 flex flex-col items-center justify-center text-center text-gray-500 p-4">
             <Wrench size={48} className="mb-4" />
-            <p>Nenhum serviço encontrado.</p>
+            <p className="font-semibold text-lg">Nenhum serviço encontrado.</p>
+            <p className="text-sm mb-4">Comece cadastrando um novo serviço ou popule com dados de exemplo.</p>
             {searchTerm && <p className="text-sm">Tente ajustar sua busca.</p>}
+            <button
+              onClick={handleSeedServices}
+              disabled={isSeeding}
+              className="mt-4 flex items-center gap-2 bg-blue-100 text-blue-700 font-bold py-2 px-4 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50"
+            >
+              {isSeeding ? <Loader2 className="animate-spin" size={20} /> : <DatabaseBackup size={20} />}
+              Popular com 10 serviços padrão
+            </button>
           </div>
         ) : (
           <ServicesTable services={services} onEdit={handleOpenForm} onDelete={openDeleteModal} onClone={handleClone} sortBy={sortBy} onSort={handleSort} />

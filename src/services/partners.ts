@@ -56,6 +56,8 @@ export type PartnerDetails = Pessoa & {
   contatos: ContatoPayload[];
 };
 
+export type ClientHit = { id: string; label: string; nome: string; doc_unico: string | null };
+
 export async function savePartner(payload: PartnerPayload): Promise<PartnerDetails> {
   console.log('[SERVICE][SAVE_PARTNER]', payload);
   try {
@@ -147,4 +149,13 @@ export async function deletePartner(id: string): Promise<void> {
     console.error('[SERVICE][DELETE_PARTNER]', error);
     throw new Error(error.message || 'Erro ao excluir o registro.');
   }
+}
+
+export async function seedDefaultPartners(): Promise<Pessoa[]> {
+  console.log('[RPC] seed_partners_for_current_user');
+  return callRpc<Pessoa[]>('seed_partners_for_current_user');
+}
+
+export async function searchClients(q: string, limit = 20): Promise<ClientHit[]> {
+  return callRpc<ClientHit[]>('search_clients_for_current_user', { p_search: q, p_limit: limit });
 }

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { usePartners } from '../../hooks/usePartners';
 import { useToast } from '../../contexts/ToastProvider';
 import * as partnersService from '../../services/partners';
-import { Loader2, PlusCircle, Search, Users2 } from 'lucide-react';
+import { Loader2, PlusCircle, Search, Users2, DatabaseBackup } from 'lucide-react';
 import Pagination from '../../components/ui/Pagination';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 import Modal from '../../components/ui/Modal';
@@ -35,6 +35,7 @@ const PartnersPage: React.FC = () => {
   const [partnerToDelete, setPartnerToDelete] = useState<partnersService.PartnerListItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
 
   const handleOpenForm = async (partner: partnersService.PartnerListItem | null = null) => {
     if (partner?.id) {
@@ -98,17 +99,40 @@ const PartnersPage: React.FC = () => {
     }));
   };
 
+  const handleSeedPartners = async () => {
+    setIsSeeding(true);
+    try {
+      const seededPartners = await partnersService.seedDefaultPartners();
+      addToast(`${seededPartners.length} parceiros padrão foram adicionados!`, 'success');
+      refresh();
+    } catch (e: any) {
+      addToast(e.message || 'Erro ao popular parceiros.', 'error');
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   return (
     <div className="p-1">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Clientes e Fornecedores</h1>
-        <button
-          onClick={() => handleOpenForm()}
-          className="flex items-center gap-2 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <PlusCircle size={20} />
-          Novo Cliente/Fornecedor
-        </button>
+        <div className="flex items-center gap-2">
+            <button
+              onClick={handleSeedPartners}
+              disabled={isSeeding || loading}
+              className="flex items-center gap-2 bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+            >
+              {isSeeding ? <Loader2 className="animate-spin" size={20} /> : <DatabaseBackup size={20} />}
+              Popular Dados
+            </button>
+            <button
+              onClick={() => handleOpenForm()}
+              className="flex items-center gap-2 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <PlusCircle size={20} />
+              Novo Cliente/Fornecedor
+            </button>
+        </div>
       </div>
 
       <div className="mb-4 flex gap-4">
@@ -142,10 +166,19 @@ const PartnersPage: React.FC = () => {
         ) : error ? (
           <div className="h-96 flex items-center justify-center text-red-500">{error}</div>
         ) : partners.length === 0 ? (
-          <div className="h-96 flex flex-col items-center justify-center text-gray-500">
+          <div className="h-96 flex flex-col items-center justify-center text-center text-gray-500 p-4">
             <Users2 size={48} className="mb-4" />
-            <p>Nenhum cliente ou fornecedor encontrado.</p>
+            <p className="font-semibold text-lg">Nenhum cliente ou fornecedor encontrado.</p>
+            <p className="text-sm mb-4">Comece cadastrando um novo parceiro ou popule com dados de exemplo.</p>
             {searchTerm && <p className="text-sm">Tente ajustar sua busca.</p>}
+            <button
+              onClick={handleSeedPartners}
+              disabled={isSeeding}
+              className="mt-4 flex items-center gap-2 bg-blue-100 text-blue-700 font-bold py-2 px-4 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50"
+            >
+              {isSeeding ? <Loader2 className="animate-spin" size={20} /> : <DatabaseBackup size={20} />}
+              Popular com 10 parceiros padrão
+            </button>
           </div>
         ) : (
           <PartnersTable partners={partners} onEdit={handleOpenForm} onDelete={handleOpenDeleteModal} sortBy={sortBy} onSort={handleSort} />

@@ -1,57 +1,54 @@
-// src/services/os.ts
 import { callRpc } from '@/lib/api';
-import { supabase } from '@/lib/supabaseClient';
+import { Database } from '@/types/database.types';
 
-export type OSStatus = 'orcamento' | 'aberta' | 'concluida' | 'cancelada';
+// --- Placeholder Types for missing DB schema ---
+export type status_os = "orcamento" | "aberta" | "concluida" | "cancelada";
 
-export type OS = {
-  id: string;
-  empresa_id: string;
-  numero: number;
-  cliente_id: string | null;
-  status: OSStatus;
-  descricao: string | null;
-  consideracoes_finais: string | null;
-  data_inicio: string | null;
-  data_prevista: string | null;
-  hora: string | null;
-  data_conclusao: string | null;
-  total_itens: string;
-  desconto_valor: string;
-  total_geral: string;
-  vendedor: string | null;
-  comissao_percentual: string | null;
-  comissao_valor: string | null;
-  tecnico: string | null;
-  orcar: boolean;
-  forma_recebimento: string | null;
-  meio: string | null;
-  conta_bancaria: string | null;
-  categoria_financeira: string | null;
-  condicao_pagamento: string | null;
-  observacoes: string | null;
-  observacoes_internas: string | null;
-  anexos: string[] | null;
-  marcadores: string[] | null;
-  created_at: string;
-  updated_at: string;
+export type OrdemServico = {
+    id: string;
+    empresa_id: string;
+    numero: number;
+    cliente_id: string | null;
+    descricao: string | null;
+    status: status_os;
+    data_inicio: string | null;
+    data_prevista: string | null;
+    hora: string | null;
+    total_itens: number;
+    desconto_valor: number;
+    total_geral: number;
+    forma_recebimento: string | null;
+    condicao_pagamento: string | null;
+    observacoes: string | null;
+    observacoes_internas: string | null;
+    created_at: string;
+    updated_at: string;
 };
 
-export type OSItem = {
-  id: string;
-  empresa_id: string;
-  ordem_servico_id: string;
-  servico_id: string | null;
-  descricao: string;
-  codigo: string | null;
-  quantidade: string;
-  preco: string;
-  desconto_pct: string;
-  total: string;
-  orcar: boolean;
-  created_at: string;
-  updated_at: string;
+export type OrdemServicoItem = {
+    id: string;
+    ordem_servico_id: string;
+    empresa_id: string;
+    servico_id: string | null;
+    produto_id: string | null;
+    descricao: string;
+    codigo: string | null;
+    quantidade: number;
+    preco: number;
+    desconto_pct: number;
+    total: number;
+    orcar: boolean;
+    created_at: string;
+    updated_at: string;
 };
+// --- End Placeholder Types ---
+
+export type OrdemServicoDetails = OrdemServico & {
+  itens: OrdemServicoItem[];
+};
+
+export type OrdemServicoPayload = Partial<OrdemServico>;
+export type OrdemServicoItemPayload = Partial<OrdemServicoItem>;
 
 export type ServiceLite = {
   id: string;
@@ -61,98 +58,93 @@ export type ServiceLite = {
   unidade: string | null;
 };
 
-// -------- OS (header) --------
-export async function listOS(params?: {
+export type ProductLite = {
+  id: string;
+  descricao: string;
+  codigo: string | null;
+  preco_venda: number | null;
+  unidade: string | null;
+};
+
+// --- OS Header Functions ---
+
+export async function listOs(params: {
   search?: string | null;
-  status?: OSStatus | null;
+  status?: status_os | null;
   limit?: number;
   offset?: number;
   orderBy?: string;
   orderDir?: 'asc' | 'desc';
-}): Promise<OS[]> {
+}) {
   const p = {
-    p_search: params?.search ?? null,
-    p_status: params?.status ?? null,
-    p_limit: params?.limit ?? 50,
-    p_offset: params?.offset ?? 0,
-    p_order_by: params?.orderBy ?? 'numero',
-    p_order_dir: params?.orderDir ?? 'desc',
+    p_search: params.search ?? null,
+    p_status: params.status ? [params.status] : null,
+    p_limit: params.limit ?? 50,
+    p_offset: params.offset ?? 0,
+    p_order_by: params.orderBy ?? 'numero',
+    p_order_dir: params.orderDir ?? 'desc',
   };
-  console.log('[RPC] list_os_for_current_user', p);
-  return callRpc<OS[]>('list_os_for_current_user', p);
+  return callRpc<OrdemServico[]>('list_os_for_current_user', p);
 }
 
-export async function getOS(id: string): Promise<OS> {
-  console.log('[RPC] get_os_by_id_for_current_user', id);
-  return callRpc<OS>('get_os_by_id_for_current_user', { p_id: id });
+export async function getOs(id: string): Promise<OrdemServico> {
+  return callRpc<OrdemServico>('get_os_by_id_for_current_user', { p_id: id });
 }
 
-export async function createOS(payload: Partial<OS>): Promise<OS> {
-  console.log('[RPC] [CREATE_*] create_os_for_current_user', payload);
-  return callRpc<OS>('create_os_for_current_user', { payload });
+export async function deleteOs(id: string): Promise<void> {
+  return callRpc('delete_os_for_current_user', { p_id: id });
 }
 
-export async function updateOS(id: string, payload: Partial<OS>): Promise<OS> {
-  console.log('[RPC] update_os_for_current_user', id, payload);
-  return callRpc<OS>('update_os_for_current_user', { p_id: id, payload });
+// --- OS Items Functions ---
+
+export async function listOSItems(osId: string): Promise<OrdemServicoItem[]> {
+  return callRpc<OrdemServicoItem[]>('list_os_items_for_current_user', { p_os_id: osId });
 }
 
-export async function deleteOS(id: string): Promise<void> {
-  console.log('[RPC] delete_os_for_current_user', id);
-  return callRpc<void>('delete_os_for_current_user', { p_id: id });
+export async function addServiceItem(osId: string, servicoId: string): Promise<OrdemServicoItem> {
+  return callRpc<OrdemServicoItem>('add_service_item_to_os_for_current_user', {
+    p_os_id: osId,
+    p_servico_id: servicoId,
+  });
 }
 
-export async function cloneOS(osId: string, overrides?: Partial<OS>): Promise<OS> {
-  const payload = overrides ?? {};
-  console.log('[RPC] [OS][CLONE] create_os_clone_for_current_user', osId, payload);
-  return callRpc<OS>('create_os_clone_for_current_user', { p_source_os_id: osId, p_overrides: payload });
+export async function addProductItem(osId: string, produtoId: string): Promise<OrdemServicoItem> {
+  return callRpc<OrdemServicoItem>('add_product_item_to_os_for_current_user', {
+    p_os_id: osId,
+    p_produto_id: produtoId,
+  });
 }
 
-// -------- Itens --------
-export async function listOSItems(osId: string): Promise<OSItem[]> {
-  console.log('[RPC] [OS_ITEM][LIST] list_os_items_for_current_user', osId);
-  return callRpc<OSItem[]>('list_os_items_for_current_user', { p_os_id: osId });
+// --- Autocomplete Functions ---
+
+export async function searchServices(q: string, limit = 10): Promise<ServiceLite[]> {
+  return callRpc<ServiceLite[]>('search_services_for_current_user', { p_search: q, p_limit: limit });
 }
 
-export async function addItem(osId: string, payload: Partial<OSItem>): Promise<OSItem> {
-  console.log('[RPC] [OS_ITEM][ADD] add_os_item_for_current_user', osId, payload);
-  return callRpc<OSItem>('add_os_item_for_current_user', { p_os_id: osId, payload });
+export async function searchProducts(q: string, limit = 20) {
+  return callRpc<ProductLite[]>("search_products_for_current_user", { p_search: q, p_limit: limit });
 }
 
-export async function updateItem(itemId: string, payload: Partial<OSItem>): Promise<OSItem> {
-  console.log('[RPC] [OS_ITEM][UPDATE] update_os_item_for_current_user', itemId, payload);
-  return callRpc<OSItem>('update_os_item_for_current_user', { p_item_id: itemId, payload });
+
+// --- Composite Functions ---
+
+export async function getOsDetails(id: string): Promise<OrdemServicoDetails> {
+  const osHeader = await getOs(id);
+  const osItems = await listOSItems(id);
+  return { ...osHeader, itens: osItems };
 }
 
-export async function deleteItem(itemId: string): Promise<void> {
-  console.log('[RPC] [OS_ITEM][DELETE] delete_os_item_for_current_user', itemId);
-  return callRpc<void>('delete_os_item_for_current_user', { p_item_id: itemId });
-}
-
-// -------- Autocomplete Serviços --------
-export async function searchServices(q: string, limit = 20): Promise<ServiceLite[]> {
-  const p = { p_search: q ?? null, p_limit: limit };
-  console.log('[RPC] search_services_for_current_user', p);
-  return callRpc<ServiceLite[]>('search_services_for_current_user', p);
-}
-
-// --- adicione abaixo das outras exports ---
-export type ClientHit = { id: string; label: string; nome: string; documento: string | null };
-
-// Busca clientes (autocomplete). search com ≥2 chars; limit default 20.
-export async function searchClients(search: string, limit = 20): Promise<ClientHit[]> {
-  const q = (search ?? '').trim();
-  if (q.length < 2) {
-    return [];
+export async function saveOs(osData: Partial<OrdemServicoDetails>): Promise<OrdemServicoDetails> {
+  let savedOsHeader: OrdemServico;
+  if (osData.id) {
+    savedOsHeader = await callRpc<OrdemServico>('update_os_for_current_user', { p_id: osData.id, payload: osData });
+  } else {
+    savedOsHeader = await callRpc<OrdemServico>('create_os_for_current_user', { payload: osData });
   }
-  try {
-    const data = await callRpc<ClientHit[]>('search_clients_for_current_user', {
-      p_search: q,
-      p_limit: limit,
-    });
-    return data ?? [];
-  } catch (error) {
-    console.error('[RPC][ERROR] search_clients_for_current_user', error);
-    return [];
-  }
+  return getOsDetails(savedOsHeader.id);
+}
+
+// --- Exports for compatibility ---
+export async function deleteOsItem(itemId: string) {
+  return callRpc<void>("delete_os_item_for_current_user", { p_item_id: itemId });
 }

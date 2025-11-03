@@ -53,3 +53,8 @@ export async function cloneService(id: string, overrides?: { descricao?: string;
     p_source_service_id: id, p_overrides: overrides || {}
   });
 }
+
+export async function seedDefaultServices(): Promise<Service[]> {
+  console.log('[RPC] seed_services_for_current_user');
+  return callRpc<Service[]>('seed_services_for_current_user');
+}

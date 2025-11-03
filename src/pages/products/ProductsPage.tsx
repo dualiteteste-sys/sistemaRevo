@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useProducts } from '../../hooks/useProducts';
 import { useToast } from '../../contexts/ToastProvider';
 import ProductsTable from '../../components/products/ProductsTable';
 import Pagination from '../../components/ui/Pagination';
 import DeleteProductModal from '../../components/products/DeleteProductModal';
-import { Loader2, PlusCircle, Search, Package } from 'lucide-react';
+import { Loader2, PlusCircle, Search, Package, DatabaseBackup } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import ProductFormPanel from '../../components/products/ProductFormPanel';
 import * as productsService from '../../services/products';
@@ -36,6 +36,12 @@ const ProductsPage: React.FC = () => {
   const [productToDelete, setProductToDelete] = useState<productsService.Product | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const refreshList = useCallback(() => {
+    setPage(1);
+    setSearchTerm('');
+  }, [setPage, setSearchTerm]);
 
   const handleOpenForm = async (product: productsService.Product | null = null) => {
     if (product && product.id) {
@@ -111,17 +117,41 @@ const ProductsPage: React.FC = () => {
     }
   };
 
+  const handleSeedProducts = async () => {
+    setIsSeeding(true);
+    try {
+      const seededProducts = await productsService.seedDefaultProducts();
+      addToast(`${seededProducts.length} produtos padrão foram adicionados!`, 'success');
+      refreshList();
+    } catch (e: any) {
+      addToast(e.message || 'Erro ao popular produtos.', 'error');
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+
   return (
     <div className="p-1">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Produtos</h1>
-        <button
-          onClick={() => handleOpenForm()}
-          className="flex items-center gap-2 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <PlusCircle size={20} />
-          Novo Produto
-        </button>
+        <div className="flex items-center gap-2">
+            <button
+              onClick={handleSeedProducts}
+              disabled={isSeeding || loading}
+              className="flex items-center gap-2 bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+            >
+              {isSeeding ? <Loader2 className="animate-spin" size={20} /> : <DatabaseBackup size={20} />}
+              Popular Dados
+            </button>
+            <button
+              onClick={() => handleOpenForm()}
+              className="flex items-center gap-2 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <PlusCircle size={20} />
+              Novo Produto
+            </button>
+        </div>
       </div>
 
       <div className="mb-4 flex gap-4">
@@ -148,16 +178,25 @@ const ProductsPage: React.FC = () => {
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         {loading && products.length === 0 ? (
-          <div className="h-64 flex items-center justify-center">
+          <div className="h-96 flex items-center justify-center">
             <Loader2 className="animate-spin text-blue-500" size={32} />
           </div>
         ) : error ? (
-          <div className="h-64 flex items-center justify-center text-red-500">{error}</div>
+          <div className="h-96 flex items-center justify-center text-red-500">{error}</div>
         ) : products.length === 0 ? (
-          <div className="h-64 flex flex-col items-center justify-center text-gray-500">
+          <div className="h-96 flex flex-col items-center justify-center text-center text-gray-500 p-4">
             <Package size={48} className="mb-4" />
-            <p>Nenhum produto encontrado.</p>
+            <p className="font-semibold text-lg">Nenhum produto encontrado.</p>
+            <p className="text-sm mb-4">Comece cadastrando um novo produto ou popule com dados de exemplo.</p>
             {searchTerm && <p className="text-sm">Tente ajustar sua busca.</p>}
+            <button
+              onClick={handleSeedProducts}
+              disabled={isSeeding}
+              className="mt-4 flex items-center gap-2 bg-blue-100 text-blue-700 font-bold py-2 px-4 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50"
+            >
+              {isSeeding ? <Loader2 className="animate-spin" size={20} /> : <DatabaseBackup size={20} />}
+              Popular com 10 produtos padrão
+            </button>
           </div>
         ) : (
           <ProductsTable products={products} onEdit={(p) => handleOpenForm(p)} onDelete={handleOpenDeleteModal} onClone={handleClone} sortBy={sortBy} onSort={handleSort} />

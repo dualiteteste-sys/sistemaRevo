@@ -133,3 +133,8 @@ export async function cloneProduct(
   });
   return data;
 }
+
+export async function seedDefaultProducts(): Promise<FullProduct[]> {
+  console.log('[RPC] seed_products_for_current_user');
+  return callRpc<FullProduct[]>('seed_products_for_current_user');
+}

@@ -1,58 +1,58 @@
-import React, { useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { CheckCircle2, XCircle, Info, X } from 'lucide-react';
+import React from "react";
 
-interface ToastProps {
-  message: string;
-  type: 'success' | 'error' | 'info';
-  onDismiss: () => void;
-}
+type ToastType = "success" | "error" | "warning" | "info";
 
-const toastConfig = {
-  success: {
-    icon: CheckCircle2,
-    bg: 'bg-green-500',
-  },
-  error: {
-    icon: XCircle,
-    bg: 'bg-red-500',
-  },
-  info: {
-    icon: Info,
-    bg: 'bg-blue-500',
-  },
+export type ToastProps = {
+  type?: ToastType;
+  title?: string;
+  message?: string;
+  onClose?: () => void;
+  // opcional: permite passar um ícone custom
+  icon?: React.ReactNode;
+  className?: string;
 };
 
-const Toast: React.FC<ToastProps> = ({ message, type, onDismiss }) => {
-  const { icon: Icon, bg } = toastConfig[type];
+const toastConfig: Record<ToastType, { icon: React.ReactNode; className: string }> = {
+  success: { icon: <span aria-hidden>✓</span>, className: "bg-green-600 text-white" },
+  error:   { icon: <span aria-hidden>✕</span>, className: "bg-red-600 text-white" },
+  warning: { icon: <span aria-hidden>!</span>, className: "bg-yellow-600 text-black" },
+  info:    { icon: <span aria-hidden>i</span>, className: "bg-blue-600 text-white" },
+};
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onDismiss();
-    }, 5000);
+export default function Toast(props: ToastProps) {
+  const {
+    type = "info",
+    title,
+    message,
+    onClose,
+    icon,
+    className = "",
+  } = props;
 
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [onDismiss]);
+  // Fallback seguro: se vier um type inválido, cai para "info"
+  const cfg = toastConfig[type as ToastType] ?? toastConfig.info;
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: -50, scale: 0.3 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
-      className={`flex items-center justify-between w-full max-w-sm p-4 text-white ${bg} rounded-lg shadow-lg`}
+    <div
+      role="status"
+      className={`pointer-events-auto w-full max-w-sm rounded-2xl shadow-lg ring-1 ring-black/10 p-3 flex gap-3 ${cfg.className} ${className}`}
+      data-log="[UI][Toast]"
     >
-      <div className="flex items-center">
-        <Icon className="w-6 h-6 mr-3" />
-        <span className="text-sm font-medium">{message}</span>
+      <div className="shrink-0">{icon ?? cfg.icon}</div>
+      <div className="min-w-0">
+        {title && <p className="font-semibold leading-5">{title}</p>}
+        {message && <p className="text-sm opacity-90">{message}</p>}
       </div>
-      <button onClick={onDismiss} className="ml-4 -mr-1 p-1 rounded-md hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white">
-        <X className="w-5 h-5" />
-      </button>
-    </motion.div>
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fechar"
+          className="ml-auto rounded-md px-2 text-current/80 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+        >
+          ×
+        </button>
+      )}
+    </div>
   );
-};
-
-export default Toast;
+}
