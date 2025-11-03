@@ -13,6 +13,7 @@ import ProductsPage from './pages/products/ProductsPage';
 import PartnersPage from './pages/partners/PartnersPage';
 import CarriersPage from './pages/carriers/CarriersPage';
 import ServicesPage from './pages/services/ServicesPage';
+import OSPage from './pages/os/OSPage';
 import AuthConfirmed from './pages/auth/Confirmed';
 import CepSearchPage from './pages/tools/CepSearchPage';
 import CnpjSearchPage from './pages/tools/CnpjSearchPage';
@@ -64,6 +65,7 @@ const App = () => {
         <Route path="partners" element={<PartnersPage />} />
         <Route path="carriers" element={<CarriersPage />} />
         <Route path="services" element={<ServicesPage />} />
+        <Route path="ordens-de-servico" element={<OSPage />} />
         <Route path="cep-search" element={<CepSearchPage />} />
         <Route path="cnpj-search" element={<CnpjSearchPage />} />
         <Route path="nfe-input" element={<NfeInputPage />} />

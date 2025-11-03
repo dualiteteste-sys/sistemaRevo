@@ -77,7 +77,7 @@ export const menuConfig: { name: string; icon: React.ElementType; href: string; 
     href: '#',
     gradient: 'from-amber-500 to-amber-600',
     children: [
-        { name: 'Ordens de Serviço', icon: ClipboardCheck, href: '#' },
+        { name: 'Ordens de Serviço', icon: ClipboardCheck, href: '/app/ordens-de-servico' },
         { name: 'Contratos', icon: FileText, href: '#' },
         { name: 'Notas de Serviço', icon: Receipt, href: '#' },
         { name: 'Cobranças', icon: Banknote, href: '#' },

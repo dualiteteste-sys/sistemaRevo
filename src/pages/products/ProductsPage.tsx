@@ -8,6 +8,7 @@ import { Loader2, PlusCircle, Search, Package } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import ProductFormPanel from '../../components/products/ProductFormPanel';
 import * as productsService from '../../services/products';
+import Select from '@/components/ui/forms/Select';
 
 const ProductsPage: React.FC = () => {
   const {
@@ -131,18 +132,18 @@ const ProductsPage: React.FC = () => {
             placeholder="Buscar por nome ou SKU..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full max-w-sm p-2 pl-10 border border-gray-300 rounded-lg"
+            className="w-full max-w-sm p-3 pl-10 border border-gray-300 rounded-lg"
           />
         </div>
-        <select
+        <Select
           value={filterStatus || ''}
           onChange={(e) => setFilterStatus(e.target.value as 'ativo' | 'inativo' || null)}
-          className="p-2 border border-gray-300 rounded-lg bg-white"
+          className="min-w-[200px]"
         >
           <option value="">Todos os status</option>
           <option value="ativo">Ativo</option>
           <option value="inativo">Inativo</option>
-        </select>
+        </Select>
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">

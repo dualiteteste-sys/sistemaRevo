@@ -8,6 +8,7 @@ import ConfirmationModal from '../../components/ui/ConfirmationModal';
 import Modal from '../../components/ui/Modal';
 import PartnersTable from '../../components/partners/PartnersTable';
 import PartnerFormPanel from '../../components/partners/PartnerFormPanel';
+import Select from '@/components/ui/forms/Select';
 
 const PartnersPage: React.FC = () => {
   const {
@@ -118,19 +119,19 @@ const PartnersPage: React.FC = () => {
             placeholder="Buscar por nome, doc ou email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full max-w-xs p-2 pl-10 border border-gray-300 rounded-lg"
+            className="w-full max-w-xs p-3 pl-10 border border-gray-300 rounded-lg"
           />
         </div>
-        <select
+        <Select
           value={filterType || ''}
           onChange={(e) => setFilterType(e.target.value || null)}
-          className="p-2 border border-gray-300 rounded-lg bg-white"
+          className="min-w-[200px]"
         >
           <option value="">Todos os tipos</option>
           <option value="cliente">Cliente</option>
           <option value="fornecedor">Fornecedor</option>
           <option value="ambos">Ambos</option>
-        </select>
+        </Select>
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">

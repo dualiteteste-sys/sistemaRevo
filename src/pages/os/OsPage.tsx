@@ -1,18 +1,26 @@
 import React, { useState } from 'react';
-import { useCarriers } from '../../hooks/useCarriers';
-import { useToast } from '../../contexts/ToastProvider';
-import * as carriersService from '../../services/carriers';
-import { Loader2, PlusCircle, Search, Truck } from 'lucide-react';
-import Pagination from '../../components/ui/Pagination';
-import ConfirmationModal from '../../components/ui/ConfirmationModal';
-import Modal from '../../components/ui/Modal';
-import CarriersTable from '../../components/carriers/CarriersTable';
-import CarrierFormPanel from '../../components/carriers/CarrierFormPanel';
+import { useOs } from '@/hooks/useOs';
+import { useToast } from '@/contexts/ToastProvider';
+import * as osService from '@/services/os';
+import { Loader2, PlusCircle, Search, ClipboardCheck } from 'lucide-react';
+import Pagination from '@/components/ui/Pagination';
+import ConfirmationModal from '@/components/ui/ConfirmationModal';
+import Modal from '@/components/ui/Modal';
+import OsTable from '@/components/os/OsTable';
+import OsFormPanel from '@/components/os/OsFormPanel';
 import Select from '@/components/ui/forms/Select';
+import { Database } from '@/types/database.types';
 
-const CarriersPage: React.FC = () => {
+const statusOptions: { value: Database['public']['Enums']['status_os']; label: string }[] = [
+    { value: 'orcamento', label: 'Orçamento' },
+    { value: 'aberta', label: 'Aberta' },
+    { value: 'concluida', label: 'Concluída' },
+    { value: 'cancelada', label: 'Cancelada' },
+];
+
+const OsPage: React.FC = () => {
   const {
-    carriers,
+    serviceOrders,
     loading,
     error,
     count,
@@ -26,24 +34,24 @@ const CarriersPage: React.FC = () => {
     setFilterStatus,
     setSortBy,
     refresh,
-  } = useCarriers();
+  } = useOs();
   const { addToast } = useToast();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedCarrier, setSelectedCarrier] = useState<carriersService.Carrier | null>(null);
+  const [selectedOs, setSelectedOs] = useState<osService.OrdemServicoDetails | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [carrierToDelete, setCarrierToDelete] = useState<carriersService.CarrierListItem | null>(null);
+  const [osToDelete, setOsToDelete] = useState<osService.OrdemServico | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
 
-  const handleOpenForm = async (carrier: carriersService.CarrierListItem | null = null) => {
-    if (carrier?.id) {
+  const handleOpenForm = async (os: osService.OrdemServico | null = null) => {
+    if (os?.id) {
       setIsFetchingDetails(true);
       setIsFormOpen(true);
-      setSelectedCarrier(null);
+      setSelectedOs(null);
       try {
-        const details = await carriersService.getCarrierDetails(carrier.id);
-        setSelectedCarrier(details);
+        const details = await osService.getOsDetails(os.id);
+        setSelectedOs(details);
       } catch (e: any) {
         addToast(e.message, 'error');
         setIsFormOpen(false);
@@ -51,14 +59,14 @@ const CarriersPage: React.FC = () => {
         setIsFetchingDetails(false);
       }
     } else {
-      setSelectedCarrier(null);
+      setSelectedOs(null);
       setIsFormOpen(true);
     }
   };
 
   const handleCloseForm = () => {
     setIsFormOpen(false);
-    setSelectedCarrier(null);
+    setSelectedOs(null);
   };
 
   const handleSaveSuccess = () => {
@@ -66,24 +74,19 @@ const CarriersPage: React.FC = () => {
     handleCloseForm();
   };
 
-  const handleOpenDeleteModal = (carrier: carriersService.CarrierListItem) => {
-    setCarrierToDelete(carrier);
+  const handleOpenDeleteModal = (os: osService.OrdemServico) => {
+    setOsToDelete(os);
     setIsDeleteModalOpen(true);
   };
 
-  const handleCloseDeleteModal = () => {
-    setIsDeleteModalOpen(false);
-    setCarrierToDelete(null);
-  };
-
   const handleDelete = async () => {
-    if (!carrierToDelete?.id) return;
+    if (!osToDelete?.id) return;
     setIsDeleting(true);
     try {
-      await carriersService.deleteCarrier(carrierToDelete.id);
-      addToast('Transportadora excluída com sucesso!', 'success');
+      await osService.deleteOs(osToDelete.id);
+      addToast('Ordem de Serviço excluída com sucesso!', 'success');
       refresh();
-      handleCloseDeleteModal();
+      setIsDeleteModalOpen(false);
     } catch (e: any) {
       addToast(e.message || 'Erro ao excluir.', 'error');
     } finally {
@@ -91,7 +94,7 @@ const CarriersPage: React.FC = () => {
     }
   };
 
-  const handleSort = (column: keyof carriersService.CarrierListItem) => {
+  const handleSort = (column: keyof osService.OrdemServico) => {
     setSortBy(prev => ({
       column,
       ascending: prev.column === column ? !prev.ascending : true,
@@ -101,13 +104,13 @@ const CarriersPage: React.FC = () => {
   return (
     <div className="p-1">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Transportadoras</h1>
+        <h1 className="text-3xl font-bold text-gray-800">Ordens de Serviço</h1>
         <button
           onClick={() => handleOpenForm()}
           className="flex items-center gap-2 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
         >
           <PlusCircle size={20} />
-          Nova Transportadora
+          Nova O.S.
         </button>
       </div>
 
@@ -116,7 +119,7 @@ const CarriersPage: React.FC = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"
-            placeholder="Buscar por nome ou CNPJ..."
+            placeholder="Buscar por nº ou descrição..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full max-w-xs p-3 pl-10 border border-gray-300 rounded-lg"
@@ -124,30 +127,29 @@ const CarriersPage: React.FC = () => {
         </div>
         <Select
           value={filterStatus || ''}
-          onChange={(e) => setFilterStatus(e.target.value || null)}
+          onChange={(e) => setFilterStatus(e.target.value as any || null)}
           className="min-w-[200px]"
         >
           <option value="">Todos os status</option>
-          <option value="ativa">Ativa</option>
-          <option value="inativa">Inativa</option>
+          {statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
         </Select>
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        {loading && carriers.length === 0 ? (
+        {loading && serviceOrders.length === 0 ? (
           <div className="h-96 flex items-center justify-center">
             <Loader2 className="animate-spin text-blue-500" size={32} />
           </div>
         ) : error ? (
           <div className="h-96 flex items-center justify-center text-red-500">{error}</div>
-        ) : carriers.length === 0 ? (
+        ) : serviceOrders.length === 0 ? (
           <div className="h-96 flex flex-col items-center justify-center text-gray-500">
-            <Truck size={48} className="mb-4" />
-            <p>Nenhuma transportadora encontrada.</p>
+            <ClipboardCheck size={48} className="mb-4" />
+            <p>Nenhuma Ordem de Serviço encontrada.</p>
             {searchTerm && <p className="text-sm">Tente ajustar sua busca.</p>}
           </div>
         ) : (
-          <CarriersTable carriers={carriers} onEdit={handleOpenForm} onDelete={handleOpenDeleteModal} sortBy={sortBy} onSort={handleSort} />
+          <OsTable serviceOrders={serviceOrders} onEdit={handleOpenForm} onDelete={handleOpenDeleteModal} sortBy={sortBy} onSort={handleSort} />
         )}
       </div>
 
@@ -155,22 +157,22 @@ const CarriersPage: React.FC = () => {
         <Pagination currentPage={page} totalCount={count} pageSize={pageSize} onPageChange={setPage} />
       )}
 
-      <Modal isOpen={isFormOpen} onClose={handleCloseForm} title={selectedCarrier ? 'Editar Transportadora' : 'Nova Transportadora'}>
+      <Modal isOpen={isFormOpen} onClose={handleCloseForm} title={selectedOs ? `Editar O.S. #${selectedOs.numero}` : 'Nova Ordem de Serviço'}>
         {isFetchingDetails ? (
-          <div className="flex items-center justify-center h-full min-h-[400px]">
+          <div className="flex items-center justify-center h-full min-h-[500px]">
             <Loader2 className="animate-spin text-blue-600" size={48} />
           </div>
         ) : (
-          <CarrierFormPanel carrier={selectedCarrier} onSaveSuccess={handleSaveSuccess} onClose={handleCloseForm} />
+          <OsFormPanel os={selectedOs} onSaveSuccess={handleSaveSuccess} onClose={handleCloseForm} />
         )}
       </Modal>
 
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
-        onClose={handleCloseDeleteModal}
+        onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDelete}
         title="Confirmar Exclusão"
-        description={`Tem certeza que deseja excluir a transportadora "${carrierToDelete?.nome_razao_social}"? Esta ação não pode ser desfeita.`}
+        description={`Tem certeza que deseja excluir a O.S. nº ${osToDelete?.numero}? Esta ação não pode ser desfeita.`}
         confirmText="Sim, Excluir"
         isLoading={isDeleting}
         variant="danger"
@@ -179,4 +181,4 @@ const CarriersPage: React.FC = () => {
   );
 };
 
-export default CarriersPage;
+export default OsPage;
