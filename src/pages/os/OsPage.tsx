@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useOs } from '@/hooks/useOs';
 import { useToast } from '@/contexts/ToastProvider';
 import * as osService from '@/services/os';
-import { Loader2, PlusCircle, Search, ClipboardCheck } from 'lucide-react';
+import { Loader2, PlusCircle, Search, ClipboardCheck, DatabaseBackup, Calendar } from 'lucide-react';
 import Pagination from '@/components/ui/Pagination';
 import ConfirmationModal from '@/components/ui/ConfirmationModal';
 import Modal from '@/components/ui/Modal';
@@ -10,6 +10,7 @@ import OsTable from '@/components/os/OsTable';
 import OsFormPanel from '@/components/os/OsFormPanel';
 import Select from '@/components/ui/forms/Select';
 import { Database } from '@/types/database.types';
+import OsKanbanModal from '@/components/os/kanban/OsKanbanModal';
 
 const statusOptions: { value: Database['public']['Enums']['status_os']; label: string }[] = [
     { value: 'orcamento', label: 'Orçamento' },
@@ -38,11 +39,13 @@ const OsPage: React.FC = () => {
   const { addToast } = useToast();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isKanbanOpen, setIsKanbanOpen] = useState(false);
   const [selectedOs, setSelectedOs] = useState<osService.OrdemServicoDetails | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [osToDelete, setOsToDelete] = useState<osService.OrdemServico | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
 
   const handleOpenForm = async (os: osService.OrdemServico | null = null) => {
     if (os?.id) {
@@ -101,17 +104,47 @@ const OsPage: React.FC = () => {
     }));
   };
 
+  const handleSeedOs = async () => {
+    setIsSeeding(true);
+    try {
+      const seededData = await osService.seedDefaultOs();
+      addToast(`${seededData.length} Ordens de Serviço de exemplo foram adicionadas!`, 'success');
+      refresh();
+    } catch (e: any) {
+      addToast(e.message || 'Erro ao popular dados de O.S.', 'error');
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   return (
     <div className="p-1">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Ordens de Serviço</h1>
-        <button
-          onClick={() => handleOpenForm()}
-          className="flex items-center gap-2 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <PlusCircle size={20} />
-          Nova O.S.
-        </button>
+        <div className="flex items-center gap-2">
+            <button
+              onClick={handleSeedOs}
+              disabled={isSeeding || loading}
+              className="flex items-center gap-2 bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+            >
+              {isSeeding ? <Loader2 className="animate-spin" size={20} /> : <DatabaseBackup size={20} />}
+              Popular Dados
+            </button>
+            <button
+              onClick={() => setIsKanbanOpen(true)}
+              className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <Calendar size={20} />
+              Agenda
+            </button>
+            <button
+              onClick={() => handleOpenForm()}
+              className="flex items-center gap-2 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <PlusCircle size={20} />
+              Nova O.S.
+            </button>
+        </div>
       </div>
 
       <div className="mb-4 flex gap-4">
@@ -143,10 +176,19 @@ const OsPage: React.FC = () => {
         ) : error ? (
           <div className="h-96 flex items-center justify-center text-red-500">{error}</div>
         ) : serviceOrders.length === 0 ? (
-          <div className="h-96 flex flex-col items-center justify-center text-gray-500">
+          <div className="h-96 flex flex-col items-center justify-center text-center text-gray-500 p-4">
             <ClipboardCheck size={48} className="mb-4" />
-            <p>Nenhuma Ordem de Serviço encontrada.</p>
+            <p className="font-semibold text-lg">Nenhuma Ordem de Serviço encontrada.</p>
+            <p className="text-sm mb-4">Comece cadastrando uma nova O.S. ou popule com dados de exemplo.</p>
             {searchTerm && <p className="text-sm">Tente ajustar sua busca.</p>}
+            <button
+              onClick={handleSeedOs}
+              disabled={isSeeding}
+              className="mt-4 flex items-center gap-2 bg-blue-100 text-blue-700 font-bold py-2 px-4 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50"
+            >
+              {isSeeding ? <Loader2 className="animate-spin" size={20} /> : <DatabaseBackup size={20} />}
+              Popular com Ordens de Serviço de exemplo
+            </button>
           </div>
         ) : (
           <OsTable serviceOrders={serviceOrders} onEdit={handleOpenForm} onDelete={handleOpenDeleteModal} sortBy={sortBy} onSort={handleSort} />
@@ -166,6 +208,8 @@ const OsPage: React.FC = () => {
           <OsFormPanel os={selectedOs} onSaveSuccess={handleSaveSuccess} onClose={handleCloseForm} />
         )}
       </Modal>
+
+      <OsKanbanModal isOpen={isKanbanOpen} onClose={() => setIsKanbanOpen(false)} />
 
       <ConfirmationModal
         isOpen={isDeleteModalOpen}

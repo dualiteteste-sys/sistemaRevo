@@ -66,6 +66,15 @@ export type ProductLite = {
   unidade: string | null;
 };
 
+export type KanbanOs = {
+    id: string;
+    numero: bigint;
+    descricao: string;
+    status: status_os;
+    data_prevista: string | null;
+    cliente_nome: string | null;
+};
+
 // --- OS Header Functions ---
 
 export async function listOs(params: {
@@ -143,6 +152,21 @@ export async function saveOs(osData: Partial<OrdemServicoDetails>): Promise<Orde
   }
   return getOsDetails(savedOsHeader.id);
 }
+
+export async function seedDefaultOs(): Promise<OrdemServico[]> {
+    console.log('[RPC] seed_os_for_current_user');
+    return callRpc<OrdemServico[]>('seed_os_for_current_user');
+}
+
+// --- Kanban Functions ---
+export async function listKanbanOs(): Promise<KanbanOs[]> {
+    return callRpc<KanbanOs[]>('list_kanban_os');
+}
+
+export async function updateOsDataPrevista(osId: string, newDate: string | null): Promise<void> {
+    return callRpc('update_os_data_prevista', { p_os_id: osId, p_new_date: newDate });
+}
+
 
 // --- Exports for compatibility ---
 export async function deleteOsItem(itemId: string) {
