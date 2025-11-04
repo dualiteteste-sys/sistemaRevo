@@ -11,6 +11,7 @@ import OsFormPanel from '@/components/os/OsFormPanel';
 import Select from '@/components/ui/forms/Select';
 import { Database } from '@/types/database.types';
 import OsKanbanModal from '@/components/os/kanban/OsKanbanModal';
+import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 
 const statusOptions: { value: Database['public']['Enums']['status_os']; label: string }[] = [
     { value: 'orcamento', label: 'Orçamento' },
@@ -35,6 +36,7 @@ const OsPage: React.FC = () => {
     setFilterStatus,
     setSortBy,
     refresh,
+    reorderOs,
   } = useOs();
   const { addToast } = useToast();
 
@@ -107,13 +109,26 @@ const OsPage: React.FC = () => {
   const handleSeedOs = async () => {
     setIsSeeding(true);
     try {
-      const seededData = await osService.seedDefaultOs();
-      addToast(`${seededData.length} Ordens de Serviço de exemplo foram adicionadas!`, 'success');
+      await osService.seedDefaultOs();
+      addToast(`20 Ordens de Serviço de exemplo foram adicionadas!`, 'success');
       refresh();
     } catch (e: any) {
       addToast(e.message || 'Erro ao popular dados de O.S.', 'error');
     } finally {
       setIsSeeding(false);
+    }
+  };
+
+  const handleDragEnd = async (result: DropResult) => {
+    const { destination, source } = result;
+    if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) {
+      return;
+    }
+
+    try {
+      await reorderOs(source.index, destination.index);
+    } catch (error: any) {
+      addToast('Falha ao salvar a nova ordem.', 'error');
     }
   };
 
@@ -167,39 +182,41 @@ const OsPage: React.FC = () => {
           {statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
         </Select>
       </div>
-
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        {loading && serviceOrders.length === 0 ? (
-          <div className="h-96 flex items-center justify-center">
-            <Loader2 className="animate-spin text-blue-500" size={32} />
-          </div>
-        ) : error ? (
-          <div className="h-96 flex items-center justify-center text-red-500">{error}</div>
-        ) : serviceOrders.length === 0 ? (
-          <div className="h-96 flex flex-col items-center justify-center text-center text-gray-500 p-4">
-            <ClipboardCheck size={48} className="mb-4" />
-            <p className="font-semibold text-lg">Nenhuma Ordem de Serviço encontrada.</p>
-            <p className="text-sm mb-4">Comece cadastrando uma nova O.S. ou popule com dados de exemplo.</p>
-            {searchTerm && <p className="text-sm">Tente ajustar sua busca.</p>}
-            <button
-              onClick={handleSeedOs}
-              disabled={isSeeding}
-              className="mt-4 flex items-center gap-2 bg-blue-100 text-blue-700 font-bold py-2 px-4 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50"
-            >
-              {isSeeding ? <Loader2 className="animate-spin" size={20} /> : <DatabaseBackup size={20} />}
-              Popular com Ordens de Serviço de exemplo
-            </button>
-          </div>
-        ) : (
-          <OsTable serviceOrders={serviceOrders} onEdit={handleOpenForm} onDelete={handleOpenDeleteModal} sortBy={sortBy} onSort={handleSort} />
-        )}
-      </div>
+      
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          {loading && serviceOrders.length === 0 ? (
+            <div className="h-96 flex items-center justify-center">
+              <Loader2 className="animate-spin text-blue-500" size={32} />
+            </div>
+          ) : error ? (
+            <div className="h-96 flex items-center justify-center text-red-500">{error}</div>
+          ) : serviceOrders.length === 0 ? (
+            <div className="h-96 flex flex-col items-center justify-center text-center text-gray-500 p-4">
+              <ClipboardCheck size={48} className="mb-4" />
+              <p className="font-semibold text-lg">Nenhuma Ordem de Serviço encontrada.</p>
+              <p className="text-sm mb-4">Comece cadastrando uma nova O.S. ou popule com dados de exemplo.</p>
+              {searchTerm && <p className="text-sm">Tente ajustar sua busca.</p>}
+              <button
+                onClick={handleSeedOs}
+                disabled={isSeeding}
+                className="mt-4 flex items-center gap-2 bg-blue-100 text-blue-700 font-bold py-2 px-4 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50"
+              >
+                {isSeeding ? <Loader2 className="animate-spin" size={20} /> : <DatabaseBackup size={20} />}
+                Popular com 20 Ordens de Serviço de exemplo
+              </button>
+            </div>
+          ) : (
+            <OsTable serviceOrders={serviceOrders} onEdit={handleOpenForm} onDelete={handleOpenDeleteModal} sortBy={sortBy} onSort={handleSort} />
+          )}
+        </div>
+      </DragDropContext>
 
       {count > pageSize && (
         <Pagination currentPage={page} totalCount={count} pageSize={pageSize} onPageChange={setPage} />
       )}
 
-      <Modal isOpen={isFormOpen} onClose={handleCloseForm} title={selectedOs ? `Editar O.S. #${selectedOs.numero}` : 'Nova Ordem de Serviço'}>
+      <Modal isOpen={isFormOpen} onClose={handleCloseForm} title={selectedOs ? `Editar O.S. ${selectedOs.numero}` : 'Nova Ordem de Serviço'}>
         {isFetchingDetails ? (
           <div className="flex items-center justify-center h-full min-h-[500px]">
             <Loader2 className="animate-spin text-blue-600" size={48} />

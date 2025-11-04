@@ -23,6 +23,8 @@ export type OrdemServico = {
     observacoes_internas: string | null;
     created_at: string;
     updated_at: string;
+    ordem: number | null;
+    cliente_nome: string | null;
 };
 
 export type OrdemServicoItem = {
@@ -60,8 +62,8 @@ export type ServiceLite = {
 
 export type ProductLite = {
   id: string;
-  descricao: string;
-  codigo: string | null;
+  nome: string;
+  sku: string | null;
   preco_venda: number | null;
   unidade: string | null;
 };
@@ -79,7 +81,7 @@ export type KanbanOs = {
 
 export async function listOs(params: {
   search?: string | null;
-  status?: status_os | null;
+  status?: status_os[] | null;
   limit?: number;
   offset?: number;
   orderBy?: string;
@@ -87,21 +89,29 @@ export async function listOs(params: {
 }) {
   const p = {
     p_search: params.search ?? null,
-    p_status: params.status ? [params.status] : null,
+    p_status: params.status ?? null,
     p_limit: params.limit ?? 50,
     p_offset: params.offset ?? 0,
-    p_order_by: params.orderBy ?? 'numero',
-    p_order_dir: params.orderDir ?? 'desc',
+    p_order_by: params.orderBy ?? 'ordem',
+    p_order_dir: params.orderDir ?? 'asc',
   };
   return callRpc<OrdemServico[]>('list_os_for_current_user', p);
 }
 
 export async function getOs(id: string): Promise<OrdemServico> {
-  return callRpc<OrdemServico>('get_os_by_id_for_current_user', { p_id: id });
+  const result = await callRpc<OrdemServico[]>('get_os_by_id_for_current_user', { p_id: id });
+  if (!result || result.length === 0) {
+    throw new Error("Ordem de Serviço não encontrada.");
+  }
+  return result[0];
 }
 
 export async function deleteOs(id: string): Promise<void> {
   return callRpc('delete_os_for_current_user', { p_id: id });
+}
+
+export async function updateOsOrder(osIds: string[]): Promise<void> {
+    return callRpc('update_os_order', { p_os_ids: osIds });
 }
 
 // --- OS Items Functions ---
@@ -130,8 +140,25 @@ export async function searchServices(q: string, limit = 10): Promise<ServiceLite
   return callRpc<ServiceLite[]>('search_services_for_current_user', { p_search: q, p_limit: limit });
 }
 
-export async function searchProducts(q: string, limit = 20) {
-  return callRpc<ProductLite[]>("search_products_for_current_user", { p_search: q, p_limit: limit });
+export async function searchProducts(q: string, limit = 20): Promise<ProductLite[]> {
+  const result = await callRpc<{
+    id: string;
+    nome: string;
+    sku: string | null;
+    preco_venda: number | null;
+    unidade: string | null;
+  }[]>("search_products_for_current_user", { p_search: q, p_limit: limit });
+
+  // Mapeia o resultado para o tipo ProductLite, garantindo que 'nome' seja mapeado para 'descricao'
+  return result.map(p => ({
+    id: p.id,
+    descricao: p.nome, // Mapeamento aqui
+    codigo: p.sku,
+    preco_venda: p.preco_venda,
+    unidade: p.unidade,
+    nome: p.nome, // Mantém o campo nome se necessário em outros lugares
+    sku: p.sku
+  }));
 }
 
 
@@ -155,7 +182,7 @@ export async function saveOs(osData: Partial<OrdemServicoDetails>): Promise<Orde
 
 export async function seedDefaultOs(): Promise<OrdemServico[]> {
     console.log('[RPC] seed_os_for_current_user');
-    return callRpc<OrdemServico[]>('seed_os_for_current_user');
+    return callRpc<OrdemServico[]>('seed_os_for_current_user', { p_count: 20 });
 }
 
 // --- Kanban Functions ---

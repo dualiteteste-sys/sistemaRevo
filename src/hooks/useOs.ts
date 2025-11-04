@@ -19,8 +19,8 @@ export const useOs = () => {
   const [pageSize] = useState(15);
 
   const [sortBy, setSortBy] = useState<{ column: keyof osService.OrdemServico; ascending: boolean }>({
-    column: 'numero',
-    ascending: false,
+    column: 'ordem',
+    ascending: true,
   });
 
   const fetchOs = useCallback(async () => {
@@ -32,18 +32,15 @@ export const useOs = () => {
     setLoading(true);
     setError(null);
     try {
-      // The list RPC doesn't return count. We'll have to estimate or add a count RPC.
-      // For now, I'll assume the list RPC is all we have.
       const data = await osService.listOs({
         offset: (page - 1) * pageSize,
         limit: pageSize,
         search: debouncedSearchTerm,
-        status: filterStatus,
+        status: filterStatus ? [filterStatus] : null,
         orderBy: sortBy.column as string,
         orderDir: sortBy.ascending ? 'asc' : 'desc',
       });
       setServiceOrders(data);
-      // This count is an estimation
       const newCount = data.length < pageSize ? (page - 1) * pageSize + data.length : (page * pageSize) + 1;
       setCount(newCount);
     } catch (e: any) {
@@ -58,6 +55,23 @@ export const useOs = () => {
   useEffect(() => {
     fetchOs();
   }, [fetchOs]);
+
+  const reorderOs = useCallback(async (startIndex: number, endIndex: number) => {
+    const items = Array.from(serviceOrders);
+    const [reorderedItem] = items.splice(startIndex, 1);
+    items.splice(endIndex, 0, reorderedItem);
+
+    setServiceOrders(items);
+    setSortBy({ column: 'ordem', ascending: true });
+
+    const newOrderIds = items.map(item => item.id);
+    try {
+        await osService.updateOsOrder(newOrderIds);
+    } catch (error) {
+        fetchOs(); // Revert on error
+        throw error; // Re-throw for the page to display a toast
+    }
+  }, [serviceOrders, fetchOs]);
 
   const refresh = () => {
     fetchOs();
@@ -78,5 +92,6 @@ export const useOs = () => {
     setFilterStatus,
     setSortBy,
     refresh,
+    reorderOs,
   };
 };
